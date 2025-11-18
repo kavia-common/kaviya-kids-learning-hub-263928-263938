@@ -67,3 +67,14 @@ section[aria-label="Subjects"] article:hover button {
   box-shadow: 0 16px 30px rgba(30, 58, 138, 0.45);
   transform: translateY(-1px);
 }
+
+/* Quiz button interaction states */
+button {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.2s ease;
+}
+button:hover {
+  transform: translateY(-1px);
+}
+button:active {
+  transform: translateY(0);
+}

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import KidAuthPage from './pages/KidAuthPage';
 import ParentDashboardLogin from './pages/ParentDashboardLogin';
 import KidDashboard from './pages/KidDashboard';
+import QuizPage from './pages/QuizPage';
 import './App.css';
 
 // PUBLIC_INTERFACE
@@ -82,6 +83,7 @@ function App() {
           <Route path="/kid-auth" element={<KidAuthPage />} />
           <Route path="/parent" element={<ParentDashboardLogin />} />
           <Route path="/dashboard" element={<KidDashboard />} />
+          <Route path="/quiz/:subject" element={<QuizPage />} />
         </Routes>
       </BrowserRouter>
     </div>
