@@ -119,12 +119,13 @@ export default function StoryModePage() {
 
   // Keyboard navigation: Left/Right to switch panels
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const onKey = (e) => {
       if (e.key === 'ArrowRight') {
         nextPanel();
       } else if (e.key === 'ArrowLeft') {
         prevPanel();
-      } else if (e.key.toLowerCase() === 'p') {
+      } else if (String(e.key || '').toLowerCase() === 'p') {
         toggleNarration();
       }
     };

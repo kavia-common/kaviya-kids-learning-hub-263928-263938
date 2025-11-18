@@ -32,6 +32,8 @@ export default function NavBar() {
 
   // Close when clicking outside
   useEffect(() => {
+    // Guard DOM access
+    if (typeof document === 'undefined') return;
     const onDocClick = (e) => {
       if (!open) return;
       if (

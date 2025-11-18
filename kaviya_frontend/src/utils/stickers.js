@@ -58,14 +58,18 @@ export function getAllStickersFlat() {
 export function getInventory() {
   /** Load inventory from localStorage or initialize defaults */
   try {
-    const raw = localStorage.getItem(INV_KEY);
-    if (raw) return JSON.parse(raw);
+    if (typeof window !== 'undefined') {
+      const raw = window.localStorage.getItem(INV_KEY);
+      if (raw) return JSON.parse(raw);
+    }
   } catch {
     // ignore parse errors
   }
   const inv = defaultInventory();
   try {
-    localStorage.setItem(INV_KEY, JSON.stringify(inv));
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(INV_KEY, JSON.stringify(inv));
+    }
   } catch {}
   return inv;
 }
@@ -73,7 +77,9 @@ export function getInventory() {
 // INTERNAL: save
 function saveInventory(inv) {
   try {
-    localStorage.setItem(INV_KEY, JSON.stringify(inv));
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(INV_KEY, JSON.stringify(inv));
+    }
   } catch {}
 }
 
@@ -141,9 +147,11 @@ export function awardForQuiz({ score, total, perfect = false, streakBonus = fals
 
   // Update streak counter if perfect
   try {
-    const prev = Number(JSON.parse(localStorage.getItem(STREAK_KEY) || '0')) || 0;
-    const next = perfect ? prev + 1 : 0;
-    localStorage.setItem(STREAK_KEY, JSON.stringify(next));
+    if (typeof window !== 'undefined') {
+      const prev = Number(JSON.parse(window.localStorage.getItem(STREAK_KEY) || '0')) || 0;
+      const next = perfect ? prev + 1 : 0;
+      window.localStorage.setItem(STREAK_KEY, JSON.stringify(next));
+    }
   } catch {}
 
   return awarded;
@@ -153,7 +161,10 @@ export function awardForQuiz({ score, total, perfect = false, streakBonus = fals
 export function getStreak() {
   /** Returns current perfect-score streak count */
   try {
-    return Number(JSON.parse(localStorage.getItem(STREAK_KEY) || '0')) || 0;
+    if (typeof window !== 'undefined') {
+      return Number(JSON.parse(window.localStorage.getItem(STREAK_KEY) || '0')) || 0;
+    }
+    return 0;
   } catch {
     return 0;
   }
@@ -163,8 +174,10 @@ export function getStreak() {
 export function getCanvas() {
   /** Load the sticker canvas state (placed stickers) */
   try {
-    const raw = localStorage.getItem(CANVAS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (typeof window !== 'undefined') {
+      const raw = window.localStorage.getItem(CANVAS_KEY);
+      if (raw) return JSON.parse(raw);
+    }
   } catch {}
   return { placed: [] };
 }
@@ -173,7 +186,9 @@ export function getCanvas() {
 export function saveCanvas(placed) {
   /** Persist the placed sticker array to localStorage */
   try {
-    localStorage.setItem(CANVAS_KEY, JSON.stringify({ placed: placed || [] }));
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(CANVAS_KEY, JSON.stringify({ placed: placed || [] }));
+    }
   } catch {}
 }
 

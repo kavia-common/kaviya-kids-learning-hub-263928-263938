@@ -26,7 +26,9 @@ export default function KidDashboard() {
   useEffect(() => {
     let stored = null;
     try {
-      stored = JSON.parse(localStorage.getItem('kaviya.kidProfile') || 'null');
+      if (typeof window !== 'undefined') {
+        stored = JSON.parse(window.localStorage.getItem('kaviya.kidProfile') || 'null');
+      }
     } catch {
       stored = null;
     }

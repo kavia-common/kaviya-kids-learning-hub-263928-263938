@@ -41,7 +41,13 @@ function loadEntries() {
 }
 
 function saveEntries(entries) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+  } catch {
+    // ignore persistence failures
+  }
 }
 
 function useAriaLive() {
@@ -315,7 +321,10 @@ function VoiceRecorder({ onSave }) {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    const ok = typeof window !== 'undefined' && !!(navigator.mediaDevices && window.MediaRecorder);
+    const ok =
+      typeof window !== 'undefined' &&
+      typeof navigator !== 'undefined' &&
+      !!(navigator.mediaDevices && window.MediaRecorder);
     setSupported(ok);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -362,7 +371,7 @@ function VoiceRecorder({ onSave }) {
       }, 200);
     } catch (e) {
       // ignore for now; permissions or device not found
-      console.error('Voice record start failed', e);
+      setRecording(false);
     }
   };
 

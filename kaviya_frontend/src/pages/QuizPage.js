@@ -55,7 +55,10 @@ export default function QuizPage() {
   // mood persisted and used for next-quiz adjustments
   const [lastMood, setLastMood] = useState(() => {
     try {
-      return localStorage.getItem(LAST_MOOD_KEY) || MOODS.HAPPY;
+      if (typeof window !== 'undefined') {
+        return window.localStorage.getItem(LAST_MOOD_KEY) || MOODS.HAPPY;
+      }
+      return MOODS.HAPPY;
     } catch {
       return MOODS.HAPPY;
     }
@@ -179,7 +182,9 @@ export default function QuizPage() {
           : 'Great! We’ll keep cheering you on with normal pace.'
     );
     try {
-      localStorage.setItem(LAST_MOOD_KEY, m);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(LAST_MOOD_KEY, m);
+      }
     } catch {
       // ok if storage blocked
     }
@@ -361,7 +366,9 @@ export default function QuizPage() {
             {/* Challenge completion hook */}
             {(() => {
               try {
-                const kid = JSON.parse(localStorage.getItem('kaviya.kidProfile') || 'null');
+                const kid = typeof window !== 'undefined'
+                  ? JSON.parse(window.localStorage.getItem('kaviya.kidProfile') || 'null')
+                  : null;
                 const username = kid?.username;
                 const pct = questionSet.length > 0 ? Math.round((score / questionSet.length) * 100) : 0;
 
@@ -377,8 +384,10 @@ export default function QuizPage() {
                       addSticker('nature_star', 1); // if exists; fallback sticker
                       // also persist kid-level XP mock if used elsewhere
                       try {
-                        const prevXP = Number(JSON.parse(localStorage.getItem('kaviya.kidXP') || '0')) || 0;
-                        localStorage.setItem('kaviya.kidXP', JSON.stringify(prevXP + 25));
+                        if (typeof window !== 'undefined') {
+                          const prevXP = Number(JSON.parse(window.localStorage.getItem('kaviya.kidXP') || '0')) || 0;
+                          window.localStorage.setItem('kaviya.kidXP', JSON.stringify(prevXP + 25));
+                        }
                       } catch {}
                       showToast('Challenge completed! +25 XP and a shiny star sticker! ⭐');
                     }

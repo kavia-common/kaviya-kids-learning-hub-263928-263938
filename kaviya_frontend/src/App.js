@@ -75,21 +75,28 @@ function App() {
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    // Guard document in case of non-browser environments
+    try {
+      if (typeof document !== 'undefined' && document?.documentElement) {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+    } catch {
+      // ignore if not available
+    }
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
 
   return (
-    <div className="App">
-      <button
-        className="theme-toggle"
-        onClick={toggleTheme}
-        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-      >
-        {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-      </button>
-      <BrowserRouter>
+    <BrowserRouter>
+      <div className="App">
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
+          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+        </button>
         <Routes>
           <Route path="/" element={<AppLayout><LandingPage /></AppLayout>} />
           <Route path="/kid-auth" element={<AppLayout><KidAuthPage /></AppLayout>} />
@@ -109,8 +116,8 @@ function App() {
           <Route path="/mini-games/science-match" element={<AppLayout><MiniGame_ScienceMatch /></AppLayout>} />
           <Route path="/journal" element={<AppLayout><JournalPage /></AppLayout>} />
         </Routes>
-      </BrowserRouter>
-    </div>
+      </div>
+    </BrowserRouter>
   );
 }
 

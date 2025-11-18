@@ -6,7 +6,8 @@
 export function getMiniGamesState() {
   /** Get the current mini-games state from localStorage. */
   try {
-    const raw = localStorage.getItem("kkh_mini_games_state");
+    if (typeof window === 'undefined') throw new Error('no-window');
+    const raw = window.localStorage.getItem("kkh_mini_games_state");
     if (!raw) {
       return {
         xp: 0,
@@ -34,7 +35,9 @@ export function getMiniGamesState() {
 
 function saveMiniGamesState(state) {
   try {
-    localStorage.setItem("kkh_mini_games_state", JSON.stringify(state));
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem("kkh_mini_games_state", JSON.stringify(state));
+    }
   } catch {
     // ignore storage failures
   }

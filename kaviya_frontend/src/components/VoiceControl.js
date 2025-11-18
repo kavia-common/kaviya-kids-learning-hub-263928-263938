@@ -274,6 +274,7 @@ const VoiceControl = ({ id = 'voice-control', initialEnabled = false }) => {
   }, []);
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
     const handleOutside = (e) => {
       if (!tooltipRef.current) return;
       if (!tooltipRef.current.contains(e.target) && e.target !== buttonRef.current) {
