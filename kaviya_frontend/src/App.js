@@ -5,6 +5,8 @@ import ParentLoginPage from './pages/ParentLoginPage';
 import ParentDashboard from './pages/ParentDashboard';
 import KidDashboard from './pages/KidDashboard';
 import QuizPage from './pages/QuizPage';
+import BadgesPage from './pages/BadgesPage';
+import AppLayout from './components/AppLayout';
 import './App.css';
 
 // PUBLIC_INTERFACE
@@ -80,12 +82,13 @@ function App() {
       </button>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/kid-auth" element={<KidAuthPage />} />
-          <Route path="/parent" element={<ParentLoginPage />} />
-          <Route path="/parent/dashboard" element={<ParentDashboard />} />
-          <Route path="/dashboard" element={<KidDashboard />} />
-          <Route path="/quiz/:subject" element={<QuizPage />} />
+          <Route path="/" element={<AppLayout><LandingPage /></AppLayout>} />
+          <Route path="/kid-auth" element={<AppLayout><KidAuthPage /></AppLayout>} />
+          <Route path="/parent" element={<AppLayout><ParentLoginPage /></AppLayout>} />
+          <Route path="/parent/dashboard" element={<AppLayout><ParentDashboard /></AppLayout>} />
+          <Route path="/dashboard" element={<AppLayout><KidDashboard /></AppLayout>} />
+          <Route path="/quiz/:subject" element={<AppLayout><QuizPage /></AppLayout>} />
+          <Route path="/badges" element={<AppLayout><BadgesPage /></AppLayout>} />
         </Routes>
       </BrowserRouter>
     </div>
