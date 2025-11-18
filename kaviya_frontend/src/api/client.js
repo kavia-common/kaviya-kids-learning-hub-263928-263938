@@ -6,8 +6,13 @@ import axios from 'axios';
  * - Attaches Authorization header when a JWT token exists in localStorage.
  * - Provides simple error normalization.
  */
-const baseURL =
-  process.env.REACT_APP_API_BASE_URL?.trim() || 'http://localhost:3001';
+const rawBase =
+  (process.env.REACT_APP_API_BASE_URL && process.env.REACT_APP_API_BASE_URL.trim()) ||
+  // Default to backend dev port 3001; explicit scheme to avoid mixed-content issues
+  'http://localhost:3001';
+
+// Normalize base so it never ends with a trailing slash to avoid double slashes in requests
+const baseURL = rawBase.replace(/\/+$/, '');
 
 export const api = axios.create({
   baseURL,
@@ -15,6 +20,8 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Allow cookies if backend opts into credentials; harmless otherwise
+  withCredentials: true,
 });
 
 // Request interceptor to include JWT token when available
