@@ -6,6 +6,7 @@ import ParentDashboard from './pages/ParentDashboard';
 import KidDashboard from './pages/KidDashboard';
 import QuizPage from './pages/QuizPage';
 import BadgesPage from './pages/BadgesPage';
+import WorldMapPage from './pages/WorldMapPage';
 import AppLayout from './components/AppLayout';
 import './App.css';
 
@@ -86,7 +87,8 @@ function App() {
           <Route path="/kid-auth" element={<AppLayout><KidAuthPage /></AppLayout>} />
           <Route path="/parent" element={<AppLayout><ParentLoginPage /></AppLayout>} />
           <Route path="/parent/dashboard" element={<AppLayout><ParentDashboard /></AppLayout>} />
-          <Route path="/dashboard" element={<AppLayout><KidDashboard /></AppLayout>} />
+          <Route path="/dashboard" element={<AppLayout><WorldMapPage /></AppLayout>} />
+          <Route path="/kid-dashboard" element={<AppLayout><KidDashboard /></AppLayout>} />
           <Route path="/quiz/:subject" element={<AppLayout><QuizPage /></AppLayout>} />
           <Route path="/badges" element={<AppLayout><BadgesPage /></AppLayout>} />
         </Routes>

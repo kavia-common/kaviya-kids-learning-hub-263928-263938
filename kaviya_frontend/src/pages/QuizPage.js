@@ -170,6 +170,10 @@ export default function QuizPage() {
     if (index + 1 >= total) {
       setStatus('done');
       setAriaMessage(`Quiz complete! You scored ${score} out of ${total}.`);
+      // Award XP: 10 per correct
+      awardXp(10 * (score + 0));
+      // Record completion to reflect on World Map
+      recordCompletion();
       // Move focus to results actions later
       return;
     }
@@ -227,9 +231,39 @@ export default function QuizPage() {
     buttonsRef.current?.[0]?.focus();
   };
 
+  function recordCompletion() {
+    try {
+      const key = 'kaviya.completed';
+      const prev = JSON.parse(localStorage.getItem(key) || 'null') || {};
+      const subjectKey = (normalized || 'other').toLowerCase();
+      const next = {
+        ...prev,
+        [subjectKey]: Number(prev[subjectKey] || 0) + 1,
+      };
+      localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
+
   const handleBackToDashboard = () => {
     navigate('/dashboard');
   };
+
+  // PUBLIC_INTERFACE
+  function awardXp(amount) {
+    /**
+     * Adds XP to localStorage "kaviya.kidXP" to influence world map locks.
+     * Safe no-op on storage errors.
+     */
+    try {
+      const current = JSON.parse(localStorage.getItem('kaviya.kidXP') || '0') || 0;
+      const next = Math.max(0, Number(current) + Number(amount || 0));
+      localStorage.setItem('kaviya.kidXP', JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
 
   const progressPercent = Math.round(((index + (status === 'done' ? 1 : 0)) / total) * 100);
 

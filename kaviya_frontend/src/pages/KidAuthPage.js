@@ -69,6 +69,7 @@ export default function KidAuthPage() {
     } catch {
       // If storage fails, still continue to next route
     }
+    // After auth, go to World Map (/dashboard)
     navigate('/dashboard');
   };
 
