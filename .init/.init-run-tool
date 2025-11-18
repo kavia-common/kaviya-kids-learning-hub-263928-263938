@@ -1,0 +1,4 @@
+{
+    "command": "PORT=<port> HOST=<host> BROWSER=none npm start",
+    "working_directory": "/home/kavia/workspace/code-generation/kaviya-kids-learning-hub-263928-263938/kaviya_frontend"
+}
