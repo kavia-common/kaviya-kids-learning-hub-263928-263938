@@ -1,20 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getChallengesForKid, saveChallenge, cancelChallenge } from '../utils/challenges';
+import { getParentData } from '../api/client';
 
 /**
  * PUBLIC_INTERFACE
  * ParentDashboard
- * Protected parent area displaying:
- * - Mock child progress chart (inline SVG bars)
- * - Screen time tracker UI with daily/weekly views and adjustable limits (non-persistent)
- * - NEW: Parent-Kid Challenges (mock) — create, list, cancel
- * Route protection: if no session, redirects to /parent
- * Styling: Corporate Navy with gold accents, rounded cards, accessible and keyboard-friendly
+ * - Keeps mock functionality
+ * - Attempts to fetch backend parent data and merge
  */
 export default function ParentDashboard() {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let sess = null;
@@ -30,29 +28,46 @@ export default function ParentDashboard() {
     setSession(sess);
   }, [navigate]);
 
-  // Mock child data
-  const childProfile = useMemo(
-    () => {
-      let kid = null;
-      try {
-        kid = JSON.parse(localStorage.getItem('kaviya.kidProfile') || 'null');
-      } catch {
-        kid = null;
-      }
-      return kid || { username: 'SkyKid', age: 8, avatar: '🙂', avatarColor: '#1E3A8A' };
-    },
-    []
-  );
+  const childProfile = useMemo(() => {
+    let kid = null;
+    try {
+      kid = JSON.parse(localStorage.getItem('kaviya.kidProfile') || 'null');
+    } catch {
+      kid = null;
+    }
+    return kid || { username: 'SkyKid', age: 8, avatar: '🙂', avatarColor: '#1E3A8A' };
+  }, []);
 
-  // Mock progress data (XP earned last 7 days)
-  const [progressData] = useState([30, 55, 40, 75, 20, 60, 90]); // arbitrary values
+  // Attempt backend fetch
+  useEffect(() => {
+    const parentId = localStorage.getItem('parentId') || localStorage.getItem('userId');
+    if (!parentId) return;
+    getParentData(parentId)
+      .then((data) => {
+        const child = data?.child || {};
+        if (child?.username) {
+          try {
+            const cached = {
+              ...(childProfile || {}),
+              username: child.username,
+              age: child?.age ?? childProfile?.age,
+              avatar: child?.avatar || childProfile?.avatar
+            };
+            localStorage.setItem('kaviya.kidProfile', JSON.stringify(cached));
+          } catch {}
+        }
+      })
+      .catch((e) => setError(e?.message || 'Unable to load latest parent data.'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [progressData] = useState([30, 55, 40, 75, 20, 60, 90]);
   const maxVal = Math.max(...progressData, 100);
 
-  // Screen time tracker state (non-persistent)
-  const [view, setView] = useState('daily'); // 'daily' | 'weekly'
+  const [view, setView] = useState('daily');
   const [limits, setLimits] = useState({
-    daily: 60,  // minutes per day
-    weekly: 420 // minutes per week
+    daily: 60,
+    weekly: 420
   });
   const [used, setUsed] = useState({
     daily: 35,
@@ -109,7 +124,6 @@ export default function ParentDashboard() {
     const t = Math.max(0, Math.min(100, Number(target || 0)));
     saveChallenge(kidName, { subject, target: t, message });
     setMessage('');
-    // status update
     if (statusLiveRef.current) {
       statusLiveRef.current.textContent = `Challenge created for ${kidName} in ${subject} with target ${t}.`;
     }
@@ -129,7 +143,6 @@ export default function ParentDashboard() {
   return (
     <main aria-labelledby="parent-dash-title" style={styles.wrap}>
       <div style={styles.container}>
-        {/* Header */}
         <header style={styles.header}>
           <div style={styles.headerLeft}>
             <div style={{ ...styles.avatar, background: childProfile.avatarColor }} aria-hidden="true">
@@ -142,15 +155,12 @@ export default function ParentDashboard() {
               <p style={styles.subtitle}>
                 Monitoring {childProfile.username} (Age {childProfile.age})
               </p>
+              {error ? <div style={{ color: '#DC2626' }}>{error}</div> : null}
             </div>
           </div>
 
           <div style={styles.headerActions}>
-            <button
-              style={styles.secondaryBtn}
-              onClick={() => navigate('/')}
-              title="Back to Home"
-            >
+            <button style={styles.secondaryBtn} onClick={() => navigate('/')} title="Back to Home">
               Home
             </button>
             <button
@@ -170,9 +180,7 @@ export default function ParentDashboard() {
             <span style={styles.cardHint}>XP earned per day</span>
           </div>
           <div role="img" aria-label="Bar chart of XP over last 7 days" style={styles.chartWrap}>
-            {/* Inline SVG simple bars */}
             <svg width="100%" height="140" viewBox="0 0 350 140" focusable="false">
-              {/* Axis line */}
               <line x1="0" y1="120" x2="350" y2="120" stroke="#E5E7EB" strokeWidth="2" />
               {progressData.map((v, i) => {
                 const barWidth = 32;
@@ -182,45 +190,23 @@ export default function ParentDashboard() {
                 const y = 120 - h;
                 return (
                   <g key={i}>
-                    <rect
-                      x={x}
-                      y={y}
-                      width={barWidth}
-                      height={h}
-                      rx="8"
-                      fill="url(#gradNavyGold)"
-                    />
-                    <text
-                      x={x + barWidth / 2}
-                      y={y - 6}
-                      fill="#111827"
-                      fontSize="10"
-                      textAnchor="middle"
-                    >
+                    <rect x={x} y={y} width={barWidth} height={h} rx="8" fill="url(#gradNavyGold)" />
+                    <text x={x + barWidth / 2} y={y - 6} fill="#111827" fontSize="10" textAnchor="middle">
                       {v}
                     </text>
                   </g>
                 );
               })}
-              {/* Labels */}
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => {
                 const barWidth = 32;
                 const gap = 18;
                 const x = 12 + i * (barWidth + gap);
                 return (
-                  <text
-                    key={d}
-                    x={x + barWidth / 2}
-                    y={132}
-                    fill="#6B7280"
-                    fontSize="10"
-                    textAnchor="middle"
-                  >
+                  <text key={d} x={x + barWidth / 2} y={132} fill="#6B7280" fontSize="10" textAnchor="middle">
                     {d}
                   </text>
                 );
               })}
-              {/* Gradient definition */}
               <defs>
                 <linearGradient id="gradNavyGold" x1="0" x2="0" y1="0" y2="1">
                   <stop offset="0%" stopColor="#1E3A8A" />
@@ -229,9 +215,7 @@ export default function ParentDashboard() {
               </defs>
             </svg>
           </div>
-          <div style={styles.progressFootnote}>
-            Tip: Encourage short, focused sessions for better retention.
-          </div>
+          <div style={styles.progressFootnote}>Tip: Encourage short, focused sessions for better retention.</div>
         </section>
 
         {/* Screen Time Tracker */}
@@ -258,28 +242,37 @@ export default function ParentDashboard() {
             </div>
           </div>
 
-          {/* Meter */}
           <div style={styles.meterWrap} aria-live="polite">
             {view === 'daily' ? (
               <>
                 <div style={styles.meterRow}>
                   <span style={styles.meterLabel}>Used</span>
-                  <span style={styles.meterValue}>{used.daily} / {limits.daily} min</span>
+                  <span style={styles.meterValue}>
+                    {used.daily} / {limits.daily} min
+                  </span>
                 </div>
                 <div style={styles.meterTrack} title={`Daily usage ${pctDaily}%`}>
                   <div style={{ ...styles.meterFill, width: `${pctDaily}%` }} />
                 </div>
                 <div style={styles.controls}>
                   <div style={styles.controlGroup} aria-label="Adjust daily used minutes" role="group">
-                    <button style={styles.smallBtn} onClick={() => adjustUsed('daily', -5)} aria-label="Decrease used time by 5 minutes">-5</button>
-                    <button style={styles.smallBtn} onClick={() => adjustUsed('daily', +5)} aria-label="Increase used time by 5 minutes">+5</button>
+                    <button style={styles.smallBtn} onClick={() => adjustUsed('daily', -5)} aria-label="Decrease used time by 5 minutes">
+                      -5
+                    </button>
+                    <button style={styles.smallBtn} onClick={() => adjustUsed('daily', +5)} aria-label="Increase used time by 5 minutes">
+                      +5
+                    </button>
                   </div>
                   <div style={styles.controlGroup} aria-label="Adjust daily limit" role="group">
-                    <button style={styles.smallBtn} onClick={() => changeLimit('daily', -10)} aria-label="Decrease daily limit by 10 minutes">-10</button>
+                    <button style={styles.smallBtn} onClick={() => changeLimit('daily', -10)} aria-label="Decrease daily limit by 10 minutes">
+                      -10
+                    </button>
                     <div style={styles.limitBadge} aria-label={`Daily limit ${limits.daily} minutes`}>
                       Limit: {limits.daily}m
                     </div>
-                    <button style={styles.smallBtn} onClick={() => changeLimit('daily', +10)} aria-label="Increase daily limit by 10 minutes">+10</button>
+                    <button style={styles.smallBtn} onClick={() => changeLimit('daily', +10)} aria-label="Increase daily limit by 10 minutes">
+                      +10
+                    </button>
                   </div>
                 </div>
               </>
@@ -287,50 +280,57 @@ export default function ParentDashboard() {
               <>
                 <div style={styles.meterRow}>
                   <span style={styles.meterLabel}>Used</span>
-                  <span style={styles.meterValue}>{used.weekly} / {limits.weekly} min</span>
+                  <span style={styles.meterValue}>
+                    {used.weekly} / {limits.weekly} min
+                  </span>
                 </div>
                 <div style={styles.meterTrack} title={`Weekly usage ${pctWeekly}%`}>
                   <div style={{ ...styles.meterFill, width: `${pctWeekly}%` }} />
                 </div>
                 <div style={styles.controls}>
                   <div style={styles.controlGroup} aria-label="Adjust weekly used minutes" role="group">
-                    <button style={styles.smallBtn} onClick={() => adjustUsed('weekly', -15)} aria-label="Decrease used time by 15 minutes">-15</button>
-                    <button style={styles.smallBtn} onClick={() => adjustUsed('weekly', +15)} aria-label="Increase used time by 15 minutes">+15</button>
+                    <button style={styles.smallBtn} onClick={() => adjustUsed('weekly', -15)} aria-label="Decrease used time by 15 minutes">
+                      -15
+                    </button>
+                    <button style={styles.smallBtn} onClick={() => adjustUsed('weekly', +15)} aria-label="Increase used time by 15 minutes">
+                      +15
+                    </button>
                   </div>
                   <div style={styles.controlGroup} aria-label="Adjust weekly limit" role="group">
-                    <button style={styles.smallBtn} onClick={() => changeLimit('weekly', -30)} aria-label="Decrease weekly limit by 30 minutes">-30</button>
+                    <button style={styles.smallBtn} onClick={() => changeLimit('weekly', -30)} aria-label="Decrease weekly limit by 30 minutes">
+                      -30
+                    </button>
                     <div style={styles.limitBadge} aria-label={`Weekly limit ${limits.weekly} minutes`}>
                       Limit: {limits.weekly}m
                     </div>
-                    <button style={styles.smallBtn} onClick={() => changeLimit('weekly', +30)} aria-label="Increase weekly limit by 30 minutes">+30</button>
+                    <button style={styles.smallBtn} onClick={() => changeLimit('weekly', +30)} aria-label="Increase weekly limit by 30 minutes">
+                      +30
+                    </button>
                   </div>
                 </div>
               </>
             )}
           </div>
 
-          <div style={styles.progressFootnote}>
-            Note: These controls are a mock preview and not yet connected to backend.
-          </div>
+          <div style={styles.progressFootnote}>Note: These controls are a mock preview and not yet connected to backend.</div>
         </section>
 
         {/* Parent-Kid Challenges */}
         <section aria-labelledby="challenge-title" style={styles.card}>
           <div style={styles.cardHeader}>
-            <h2 id="challenge-title" style={styles.cardTitle}>Create Challenge</h2>
+            <h2 id="challenge-title" style={styles.cardTitle}>
+              Create Challenge
+            </h2>
             <span style={styles.cardHint}>Set a subject goal for {kidName}</span>
           </div>
 
           <form onSubmit={onCreate} aria-describedby="challenge-help">
             <div style={{ display: 'grid', gap: 10 }}>
               <div style={{ display: 'grid', gap: 6 }}>
-                <label htmlFor="challenge-subject" style={{ fontWeight: 700, color: '#1E3A8A' }}>Subject</label>
-                <select
-                  id="challenge-subject"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  style={styles.input}
-                >
+                <label htmlFor="challenge-subject" style={{ fontWeight: 700, color: '#1E3A8A' }}>
+                  Subject
+                </label>
+                <select id="challenge-subject" value={subject} onChange={(e) => setSubject(e.target.value)} style={styles.input}>
                   <option>Math</option>
                   <option>English</option>
                   <option>Science</option>
@@ -377,12 +377,7 @@ export default function ParentDashboard() {
             </div>
           </form>
 
-          <div
-            aria-live="polite"
-            role="status"
-            ref={statusLiveRef}
-            style={{ marginTop: 10, color: '#065F46' }}
-          />
+          <div aria-live="polite" role="status" ref={statusLiveRef} style={{ marginTop: 10, color: '#065F46' }} />
 
           <div style={{ marginTop: 12, borderTop: '1px solid #E5E7EB', paddingTop: 12 }}>
             <h3 style={{ margin: 0, color: '#111827', fontSize: 16 }}>Existing Challenges</h3>
@@ -399,7 +394,7 @@ export default function ParentDashboard() {
                       padding: 10,
                       background: '#FFFFFF',
                       display: 'grid',
-                      gap: 6,
+                      gap: 6
                     }}
                     aria-label={`Challenge ${c.subject} target ${c.target}, status ${c.status}`}
                   >
@@ -410,13 +405,35 @@ export default function ParentDashboard() {
                       <div>
                         <span
                           style={{
-                            border: '2px solid ' + (c.status === 'Completed' ? '#059669' : c.status === 'Accepted' ? '#2563EB' : c.status === 'Canceled' ? '#DC2626' : '#F59E0B'),
+                            border:
+                              '2px solid ' +
+                              (c.status === 'Completed'
+                                ? '#059669'
+                                : c.status === 'Accepted'
+                                ? '#2563EB'
+                                : c.status === 'Canceled'
+                                ? '#DC2626'
+                                : '#F59E0B'),
                             borderRadius: 999,
                             padding: '2px 8px',
-                            background: c.status === 'Completed' ? '#ECFDF5' : c.status === 'Accepted' ? '#EFF6FF' : c.status === 'Canceled' ? '#FEF2F2' : '#FFFBEB',
-                            color: c.status === 'Completed' ? '#065F46' : c.status === 'Accepted' ? '#1D4ED8' : c.status === 'Canceled' ? '#991B1B' : '#92400E',
+                            background:
+                              c.status === 'Completed'
+                                ? '#ECFDF5'
+                                : c.status === 'Accepted'
+                                ? '#EFF6FF'
+                                : c.status === 'Canceled'
+                                ? '#FEF2F2'
+                                : '#FFFBEB',
+                            color:
+                              c.status === 'Completed'
+                                ? '#065F46'
+                                : c.status === 'Accepted'
+                                ? '#1D4ED8'
+                                : c.status === 'Canceled'
+                                ? '#991B1B'
+                                : '#92400E',
                             fontSize: 12,
-                            fontWeight: 800,
+                            fontWeight: 800
                           }}
                           role="status"
                           aria-live="polite"
@@ -457,14 +474,9 @@ const styles = {
     background:
       'radial-gradient(1200px 600px at 20% 20%, rgba(30, 58, 138, 0.06), transparent), ' +
       'radial-gradient(1000px 500px at 80% 30%, rgba(245, 158, 11, 0.08), transparent), ' +
-      'linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%)',
+      'linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%)'
   },
-  container: {
-    maxWidth: 1024,
-    margin: '0 auto',
-    display: 'grid',
-    gap: 16,
-  },
+  container: { maxWidth: 1024, margin: '0 auto', display: 'grid', gap: 16 },
   header: {
     background: '#fff',
     borderRadius: 18,
@@ -474,7 +486,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: 16
   },
   headerLeft: { display: 'flex', alignItems: 'center', gap: 12 },
   avatar: {
@@ -484,7 +496,7 @@ const styles = {
     display: 'grid',
     placeItems: 'center',
     color: '#fff',
-    boxShadow: '0 10px 20px rgba(30,58,138,0.28)',
+    boxShadow: '0 10px 20px rgba(30,58,138,0.28)'
   },
   avatarEmoji: { fontSize: 26 },
   title: { margin: 0, fontSize: 22, color: '#1E3A8A', letterSpacing: '-0.01em' },
@@ -499,33 +511,21 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
     boxShadow: '0 10px 22px rgba(245,158,11,0.25)',
-    fontSize: 14,
+    fontSize: 14
   },
   card: {
     background: '#fff',
     borderRadius: 18,
     border: '1px solid rgba(17, 24, 39, 0.06)',
     padding: 16,
-    boxShadow: '0 10px 30px rgba(17,24,39,0.15)',
+    boxShadow: '0 10px 30px rgba(17,24,39,0.15)'
   },
-  cardHeader: {
-    display: 'flex',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
+  cardHeader: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 },
   cardTitle: { margin: 0, fontSize: 18, color: '#111827' },
   cardHint: { fontSize: 13, color: '#6B7280' },
   chartWrap: { marginTop: 8 },
   progressFootnote: { marginTop: 8, fontSize: 12, color: '#6B7280' },
-  tablist: {
-    display: 'inline-flex',
-    background: '#F3F4F6',
-    borderRadius: 999,
-    padding: 4,
-    gap: 4,
-    border: '1px solid #E5E7EB',
-  },
+  tablist: { display: 'inline-flex', background: '#F3F4F6', borderRadius: 999, padding: 4, gap: 4, border: '1px solid #E5E7EB' },
   tabBtn: {
     border: 'none',
     background: 'transparent',
@@ -533,20 +533,15 @@ const styles = {
     borderRadius: 999,
     padding: '8px 12px',
     fontWeight: 700,
-    cursor: 'pointer',
+    cursor: 'pointer'
   },
   tabBtnActive: {
     background: 'linear-gradient(135deg, #1E3A8A, #1E40AF)',
     color: '#fff',
-    boxShadow: '0 8px 18px rgba(30, 58, 138, 0.35)',
+    boxShadow: '0 8px 18px rgba(30, 58, 138, 0.35)'
   },
   meterWrap: { display: 'grid', gap: 10 },
-  meterRow: {
-    display: 'flex',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
+  meterRow: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 6 },
   meterLabel: { fontWeight: 800, color: '#1E3A8A' },
   meterValue: { color: '#374151', fontSize: 14 },
   meterTrack: {
@@ -554,21 +549,14 @@ const styles = {
     background: '#E5E7EB',
     borderRadius: 999,
     overflow: 'hidden',
-    border: '1px solid #E5E7EB',
+    border: '1px solid #E5E7EB'
   },
   meterFill: {
     height: '100%',
-    background:
-      'linear-gradient(90deg, rgba(245,158,11,1) 0%, rgba(251,191,36,1) 60%, rgba(253,230,138,1) 100%)',
-    transition: 'width 250ms ease',
+    background: 'linear-gradient(90deg, rgba(245,158,11,1) 0%, rgba(251,191,36,1) 60%, rgba(253,230,138,1) 100%)',
+    transition: 'width 250ms ease'
   },
-  controls: {
-    display: 'flex',
-    gap: 12,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
+  controls: { display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' },
   controlGroup: { display: 'flex', gap: 8, alignItems: 'center' },
   smallBtn: {
     border: '2px solid #1E3A8A',
@@ -579,7 +567,7 @@ const styles = {
     fontWeight: 800,
     cursor: 'pointer',
     boxShadow: '0 8px 16px rgba(30,58,138,0.20)',
-    fontSize: 12,
+    fontSize: 12
   },
   limitBadge: {
     border: '2px solid #F59E0B',
@@ -588,7 +576,7 @@ const styles = {
     borderRadius: 12,
     padding: '6px 10px',
     fontWeight: 800,
-    fontSize: 12,
+    fontSize: 12
   },
   input: {
     border: '2px solid #e5e7eb',
@@ -596,7 +584,7 @@ const styles = {
     padding: '10px 12px',
     fontSize: 14,
     outline: 'none',
-    background: '#fff',
+    background: '#fff'
   },
   primaryBtn: {
     border: 'none',
@@ -607,6 +595,6 @@ const styles = {
     fontWeight: 800,
     cursor: 'pointer',
     boxShadow: '0 12px 24px rgba(30, 58, 138, 0.35)',
-    fontSize: 14,
-  },
+    fontSize: 14
+  }
 };

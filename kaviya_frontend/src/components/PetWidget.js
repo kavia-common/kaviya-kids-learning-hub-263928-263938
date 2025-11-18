@@ -1,19 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePet } from '../context/PetContext';
+import { getRewards } from '../api/client';
 
 /**
  * PUBLIC_INTERFACE
  * PetWidget
  * Floating, draggable, minimizable virtual pet companion with small settings popover.
- * - Idle animations and mood reactions with accessible messages
- * - Settings: mute sounds, reduce motion
- * - Uses Corporate Navy + cheerful accents
+ * - Fetches rewards (petStage, stickers) when userId is available
+ * - Graceful fallback to localStorage/context on errors
  */
 export default function PetWidget() {
   const { state, toggleMinimized, setPosition, settings, setSettings } = usePet();
   const dragRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [error, setError] = useState('');
 
   // Character per stage
   const character = useMemo(() => {
@@ -24,12 +25,36 @@ export default function PetWidget() {
 
   const moodEmote = useMemo(() => {
     switch (state.mood) {
-      case 'happy': return { text: 'Yay! That was great!', emoji: '🎉' };
-      case 'confused': return { text: 'Hmm, let’s try again!', emoji: '🤔' };
-      case 'excited': return { text: 'Woohoo! You rock!', emoji: '✨' };
-      default: return { text: 'Here to help!', emoji: '💫' };
+      case 'happy':
+        return { text: 'Yay! That was great!', emoji: '🎉' };
+      case 'confused':
+        return { text: 'Hmm, let’s try again!', emoji: '🤔' };
+      case 'excited':
+        return { text: 'Woohoo! You rock!', emoji: '✨' };
+      default:
+        return { text: 'Here to help!', emoji: '💫' };
     }
   }, [state.mood]);
+
+  // Rewards integration (pet stage, stickers)
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+    getRewards(userId)
+      .then((data) => {
+        const stage = Number(data?.petStage ?? state.stage);
+        const inv = Array.isArray(data?.stickers) ? data.stickers : [];
+        try {
+          localStorage.setItem('petStage', String(stage));
+          localStorage.setItem('stickers', JSON.stringify(inv));
+        } catch {}
+        // We rely on PetContext for rendering state; leave context mutations to provider if needed
+      })
+      .catch((e) => {
+        setError(e?.message || 'Unable to refresh rewards.');
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Drag handlers
   useEffect(() => {
@@ -42,7 +67,7 @@ export default function PetWidget() {
     };
     const onPointerMove = (e) => {
       if (!dragging) return;
-      setPosition(e.clientX - 40, window.innerHeight - e.clientY - 40); // translate to left/bottom offsets
+      setPosition(e.clientX - 40, window.innerHeight - e.clientY - 40);
     };
     const onPointerUp = (e) => {
       setDragging(false);
@@ -59,24 +84,18 @@ export default function PetWidget() {
     };
   }, [dragging, setPosition]);
 
-  // Compute CSS transform from left/bottom offsets
   const containerStyle = {
     position: 'fixed',
     left: `${state.position.x}px`,
     bottom: `${state.position.y}px`,
     zIndex: 70,
-    userSelect: 'none',
+    userSelect: 'none'
   };
 
-  // Reduced motion preference
   const animEnabled = !settings.reduceMotion;
 
   return (
-    <aside
-      role="complementary"
-      aria-label="Virtual pet companion"
-      style={containerStyle}
-    >
+    <aside role="complementary" aria-label="Virtual pet companion" style={containerStyle}>
       <div
         ref={dragRef}
         style={{
@@ -85,10 +104,9 @@ export default function PetWidget() {
           borderRadius: 16,
           boxShadow: '0 12px 26px rgba(17,24,39,0.18)',
           width: 220,
-          overflow: 'hidden',
+          overflow: 'hidden'
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: 'flex',
@@ -98,7 +116,7 @@ export default function PetWidget() {
             background: '#1E3A8A',
             color: '#fff',
             padding: '8px 10px',
-            borderBottom: '2px solid #F59E0B',
+            borderBottom: '2px solid #F59E0B'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -115,14 +133,12 @@ export default function PetWidget() {
                 fontWeight: 900,
                 border: '2px solid #B45309',
                 boxShadow: '0 4px 10px rgba(245,158,11,0.35)',
-                fontSize: 14,
+                fontSize: 14
               }}
             >
               P
             </div>
-            <div style={{ fontWeight: 800, fontSize: 14 }}>
-              Buddy • Lv.{state.stage}
-            </div>
+            <div style={{ fontWeight: 800, fontSize: 14 }}>Buddy • Lv.{state.stage}</div>
           </div>
 
           <div role="group" aria-label="Pet actions" style={{ display: 'flex', gap: 6 }}>
@@ -131,7 +147,7 @@ export default function PetWidget() {
               title="Settings"
               aria-haspopup="dialog"
               aria-expanded={settingsOpen}
-              onClick={() => setSettingsOpen(s => !s)}
+              onClick={() => setSettingsOpen((s) => !s)}
               style={iconBtnStyle}
             >
               ⚙️
@@ -150,15 +166,7 @@ export default function PetWidget() {
 
         {!state.minimized ? (
           <div style={{ padding: 10, display: 'grid', gap: 8 }}>
-            {/* Pet avatar with idle/mood animation */}
-            <div
-              aria-live="polite"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
+            <div aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div
                 style={{
                   height: 56,
@@ -172,42 +180,39 @@ export default function PetWidget() {
                   border: '2px solid rgba(17,24,39,0.2)',
                   boxShadow: '0 10px 18px rgba(0,0,0,0.12)',
                   fontSize: 30,
-                  animation: animEnabled ? (state.mood === 'happy'
-                    ? 'petBounce 900ms ease'
-                    : state.mood === 'confused'
-                    ? 'petTilt 900ms ease'
-                    : state.mood === 'excited'
-                    ? 'petPulse 1100ms ease'
-                    : 'petFloat 3s ease-in-out infinite') : 'none',
+                  animation: animEnabled
+                    ? state.mood === 'happy'
+                      ? 'petBounce 900ms ease'
+                      : state.mood === 'confused'
+                      ? 'petTilt 900ms ease'
+                      : state.mood === 'excited'
+                      ? 'petPulse 1100ms ease'
+                      : 'petFloat 3s ease-in-out infinite'
+                    : 'none'
                 }}
               >
                 <span aria-hidden="true">{character.emoji}</span>
               </div>
               <div>
-                <div style={{ fontWeight: 800, color: '#111827', fontSize: 14 }}>
-                  {character.label}
-                </div>
+                <div style={{ fontWeight: 800, color: '#111827', fontSize: 14 }}>{character.label}</div>
                 <div style={{ fontSize: 12, color: '#374151' }}>
                   {moodEmote.emoji} {moodEmote.text}
                 </div>
-                <div style={{ marginTop: 4, fontSize: 11, color: '#6B7280' }}>
-                  XP {state.xp}
-                </div>
+                <div style={{ marginTop: 4, fontSize: 11, color: '#6B7280' }}>XP {state.xp}</div>
               </div>
             </div>
 
-            {/* Tiny legend */}
+            {error ? <div style={{ color: '#DC2626', fontSize: 12 }}>{error}</div> : null}
+
             <div
               style={{
                 border: '1px solid #E5E7EB',
                 borderRadius: 10,
                 padding: 8,
-                background: '#F9FAFB',
+                background: '#F9FAFB'
               }}
             >
-              <div style={{ fontSize: 12, color: '#1E3A8A', fontWeight: 800 }}>
-                Tips
-              </div>
+              <div style={{ fontSize: 12, color: '#1E3A8A', fontWeight: 800 }}>Tips</div>
               <div style={{ fontSize: 12, color: '#374151' }}>
                 Drag me anywhere. I’ll cheer when you get answers right! ✨
               </div>
@@ -221,15 +226,8 @@ export default function PetWidget() {
         )}
       </div>
 
-      {settingsOpen && (
-        <PetSettingsPopover
-          onClose={() => setSettingsOpen(false)}
-          settings={settings}
-          setSettings={setSettings}
-        />
-      )}
+      {settingsOpen && <PetSettingsPopover onClose={() => setSettingsOpen(false)} settings={settings} setSettings={setSettings} />}
 
-      {/* Keyframe styles */}
       <style>{`
         @keyframes petFloat {
           0% { transform: translateY(0); }
@@ -289,28 +287,28 @@ function PetSettingsPopover({ onClose, settings, setSettings }) {
         borderRadius: 12,
         boxShadow: '0 12px 24px rgba(17,24,39,0.20)',
         padding: 10,
-        zIndex: 80,
+        zIndex: 80
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ fontWeight: 800, color: '#1E3A8A' }}>Settings</div>
-        <button type="button" onClick={onClose} aria-label="Close settings" style={iconBtnStyle}>✖️</button>
+        <button type="button" onClick={onClose} aria-label="Close settings" style={iconBtnStyle}>
+          ✖️
+        </button>
       </div>
 
       <div style={{ display: 'grid', gap: 8 }}>
         <label style={settingRowStyle}>
-          <input
-            type="checkbox"
-            checked={!!settings.mute}
-            onChange={e => setSettings({ mute: e.target.checked })}
-          /> Mute sounds
+          <input type="checkbox" checked={!!settings.mute} onChange={(e) => setSettings({ mute: e.target.checked })} /> Mute
+          sounds
         </label>
         <label style={settingRowStyle}>
           <input
             type="checkbox"
             checked={!!settings.reduceMotion}
-            onChange={e => setSettings({ reduceMotion: e.target.checked })}
-          /> Reduce motion
+            onChange={(e) => setSettings({ reduceMotion: e.target.checked })}
+          />{' '}
+          Reduce motion
         </label>
       </div>
     </div>
@@ -326,7 +324,7 @@ const iconBtnStyle = {
   fontWeight: 800,
   cursor: 'pointer',
   boxShadow: '0 8px 18px rgba(245,158,11,0.25)',
-  fontSize: 12,
+  fontSize: 12
 };
 
 const settingRowStyle = {
@@ -334,5 +332,5 @@ const settingRowStyle = {
   alignItems: 'center',
   gap: 8,
   fontSize: 14,
-  color: '#111827',
+  color: '#111827'
 };

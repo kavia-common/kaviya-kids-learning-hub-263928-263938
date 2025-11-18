@@ -1,20 +1,18 @@
-/* PUBLIC_INTERFACE */
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signup } from '../api/client';
 
 /**
  * KidAuthPage
  * A cheerful login/signup page for kids with:
- * - Avatar selection (8+ colorful emoji circles)
- * - Username input (3–15 chars, alphanumeric)
+ * - Avatar selection (emoji grid)
+ * - Username input (3–15 chars)
  * - Age selection (6–12)
- * On submit, stores data temporarily in localStorage and navigates to /dashboard.
- * Accessibility: labeled fields, focus styles, keyboard navigation for avatars.
+ * PUBLIC_INTERFACE
  */
 export default function KidAuthPage() {
   const navigate = useNavigate();
 
-  // 10 playful emoji avatars with distinct color tokens for variety
   const avatars = useMemo(
     () => [
       { id: 'a1', emoji: '🐱', color: '#1E3A8A' },
@@ -23,10 +21,10 @@ export default function KidAuthPage() {
       { id: 'a4', emoji: '🐼', color: '#2563EB' },
       { id: 'a5', emoji: '🐵', color: '#EF4444' },
       { id: 'a6', emoji: '🦄', color: '#8B5CF6' },
-      { id: 'a7', emoji: '🐨', color: '#14B8A6' },
+      { id: 'a7', emoji: '🐘', color: '#14B8A6' },
       { id: 'a8', emoji: '🐸', color: '#84CC16' },
       { id: 'a9', emoji: '🐯', color: '#F97316' },
-      { id: 'a10', emoji: '🐧', color: '#0EA5E9' },
+      { id: 'a10', emoji: '🐧', color: '#0EA5E9' }
     ],
     []
   );
@@ -35,6 +33,8 @@ export default function KidAuthPage() {
   const [username, setUsername] = useState('');
   const [age, setAge] = useState('');
   const [errors, setErrors] = useState({ username: '', age: '' });
+  const [loading, setLoading] = useState(false);
+  const [errMsg, setErrMsg] = useState('');
 
   const usernameRegex = /^[a-zA-Z0-9]{3,15}$/;
 
@@ -51,26 +51,70 @@ export default function KidAuthPage() {
     return !next.username && !next.age;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
+  const doLocalSignup = () => {
     const chosen = avatars.find((a) => a.id === selectedAvatar);
     const payload = {
       username,
       age: Number(age),
       avatar: chosen?.emoji || '🙂',
       avatarColor: chosen?.color || '#1E3A8A',
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
     };
-
     try {
       localStorage.setItem('kaviya.kidProfile', JSON.stringify(payload));
+      const userId = Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('userId', userId);
+      localStorage.setItem('username', username);
+      localStorage.setItem('age', String(payload.age));
+      localStorage.setItem('avatar', payload.avatar);
+      localStorage.setItem('role', 'kid');
     } catch {
-      // If storage fails, still continue to next route
+      // ignore storage failures
     }
-    // After auth, go to World Map (/dashboard)
     navigate('/dashboard');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrMsg('');
+    if (!validate()) return;
+    setLoading(true);
+    const chosen = avatars.find((a) => a.id === selectedAvatar);
+    try {
+      const data = await signup({
+        username,
+        role: 'kid',
+        avatar: chosen?.emoji || '🙂',
+        age: Number(age)
+      });
+      // Persist for offline use as well
+      try {
+        localStorage.setItem(
+          'kaviya.kidProfile',
+          JSON.stringify({
+            username: data?.username || username,
+            age: Number(data?.age ?? age),
+            avatar: data?.avatar || chosen?.emoji || '🙂',
+            avatarColor: chosen?.color || '#1E3A8A',
+            createdAt: new Date().toISOString()
+          })
+        );
+        if (data?.userId) localStorage.setItem('userId', data.userId);
+        if (data?.token) localStorage.setItem('authToken', data.token);
+        localStorage.setItem('username', data?.username || username);
+        localStorage.setItem('age', String(data?.age ?? age));
+        localStorage.setItem('avatar', data?.avatar || chosen?.emoji || '🙂');
+        localStorage.setItem('role', data?.role || 'kid');
+      } catch {
+        // no-op
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      setErrMsg(err?.message || 'Unable to sign up right now. Starting offline mode.');
+      doLocalSignup();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAvatarKeyDown = (e, id) => {
@@ -93,16 +137,11 @@ export default function KidAuthPage() {
             </p>
           </header>
 
-          {/* Avatar Grid */}
           <div style={styles.section}>
             <h2 style={styles.sectionTitle} id="avatar-group-label">
               Pick an avatar
             </h2>
-            <div
-              role="radiogroup"
-              aria-labelledby="avatar-group-label"
-              style={styles.avatarGrid}
-            >
+            <div role="radiogroup" aria-labelledby="avatar-group-label" style={styles.avatarGrid}>
               {avatars.map((a) => {
                 const active = selectedAvatar === a.id;
                 return (
@@ -117,7 +156,7 @@ export default function KidAuthPage() {
                       ...styles.avatar,
                       outline: active ? `3px solid var(--color-gold)` : 'none',
                       boxShadow: active ? '0 8px 24px rgba(245,158,11,0.35)' : 'var(--shadow)',
-                      background: a.color,
+                      background: a.color
                     }}
                     aria-label={`Avatar ${a.emoji}`}
                   >
@@ -130,7 +169,6 @@ export default function KidAuthPage() {
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} noValidate>
             <div style={styles.formRow}>
               <label htmlFor="username" style={styles.label}>
@@ -145,9 +183,10 @@ export default function KidAuthPage() {
                 aria-describedby="username-help"
                 aria-invalid={!!errors.username}
                 placeholder="e.g., SkyKid7"
+                disabled={loading}
                 style={{
                   ...styles.input,
-                  borderColor: errors.username ? 'var(--error, #DC2626)' : '#e5e7eb',
+                  borderColor: errors.username ? 'var(--error, #DC2626)' : '#e5e7eb'
                 }}
               />
               <small id="username-help" style={styles.help}>
@@ -170,9 +209,10 @@ export default function KidAuthPage() {
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 aria-invalid={!!errors.age}
+                disabled={loading}
                 style={{
                   ...styles.input,
-                  borderColor: errors.age ? 'var(--error, #DC2626)' : '#e5e7eb',
+                  borderColor: errors.age ? 'var(--error, #DC2626)' : '#e5e7eb'
                 }}
               >
                 <option value="" disabled>
@@ -192,41 +232,18 @@ export default function KidAuthPage() {
             </div>
 
             <div style={styles.actions}>
-              <button type="submit" style={styles.primaryBtn}>
-                Let’s Go 🚀
+              <button type="submit" style={styles.primaryBtn} disabled={loading}>
+                {loading ? 'Starting...' : 'Let’s Go 🚀'}
               </button>
               <span aria-hidden="true" style={styles.or}>
                 or
               </span>
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                style={styles.secondaryBtn}
-              >
+              <button type="button" onClick={() => navigate('/')} style={styles.secondaryBtn} disabled={loading}>
                 Back Home
               </button>
             </div>
+            {errMsg ? <div style={{ color: '#DC2626', marginTop: 8 }}>{errMsg}</div> : null}
           </form>
-
-          <div style={{ marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={() => navigate('/spin')}
-              style={{
-                border: '2px solid #1E3A8A',
-                background: '#FFFBEB',
-                color: '#92400E',
-                borderRadius: 999,
-                padding: '8px 12px',
-                fontWeight: 800,
-                boxShadow: '0 8px 18px rgba(245,158,11,0.20)',
-                cursor: 'pointer'
-              }}
-              aria-label="Go to Daily Spin"
-            >
-              ✨ Daily Spin
-            </button>
-          </div>
         </section>
       </div>
     </main>
@@ -242,7 +259,7 @@ const styles = {
     background:
       'radial-gradient(1200px 600px at 20% 20%, rgba(30, 58, 138, 0.08), transparent), ' +
       'radial-gradient(1000px 500px at 80% 30%, rgba(245, 158, 11, 0.10), transparent), ' +
-      'linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%)',
+      'linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%)'
   },
   card: {
     width: '100%',
@@ -251,35 +268,25 @@ const styles = {
     borderRadius: 20,
     padding: 28,
     boxShadow: 'var(--shadow)',
-    border: '1px solid rgba(17, 24, 39, 0.06)',
+    border: '1px solid rgba(17, 24, 39, 0.06)'
   },
   header: {
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 10
   },
   title: {
     margin: 0,
     fontSize: 'clamp(28px, 4.5vw, 40px)',
     color: 'var(--color-navy, #1E3A8A)',
-    letterSpacing: '-0.02em',
+    letterSpacing: '-0.02em'
   },
-  subtitle: {
-    marginTop: 8,
-    color: '#374151',
-    fontSize: 16,
-  },
-  section: {
-    marginTop: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    margin: '12px 0 10px',
-    color: '#111827',
-  },
+  subtitle: { marginTop: 8, color: '#374151', fontSize: 16 },
+  section: { marginTop: 16 },
+  sectionTitle: { fontSize: 18, margin: '12px 0 10px', color: '#111827' },
   avatarGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))',
-    gap: 14,
+    gap: 14
   },
   avatar: {
     height: 72,
@@ -291,22 +298,11 @@ const styles = {
     userSelect: 'none',
     transition: 'transform 0.12s ease, box-shadow 0.12s ease',
     color: '#fff',
-    outlineOffset: 3,
+    outlineOffset: 3
   },
-  avatarEmoji: {
-    fontSize: 32,
-    filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.15))',
-  },
-  formRow: {
-    marginTop: 18,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  label: {
-    fontWeight: 600,
-    marginBottom: 6,
-    color: '#111827',
-  },
+  avatarEmoji: { fontSize: 32, filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.15))' },
+  formRow: { marginTop: 18, display: 'flex', flexDirection: 'column' },
+  label: { fontWeight: 600, marginBottom: 6, color: '#111827' },
   input: {
     border: '2px solid #e5e7eb',
     borderRadius: 12,
@@ -314,25 +310,11 @@ const styles = {
     fontSize: 16,
     outline: 'none',
     transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
-    background: '#fff',
+    background: '#fff'
   },
-  help: {
-    marginTop: 6,
-    color: '#6b7280',
-    fontSize: 12,
-  },
-  errorText: {
-    color: 'var(--error, #DC2626)',
-    fontSize: 13,
-    marginTop: 6,
-  },
-  actions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 22,
-    flexWrap: 'wrap',
-  },
+  help: { marginTop: 6, color: '#6b7280', fontSize: 12 },
+  errorText: { color: 'var(--error, #DC2626)', fontSize: 13, marginTop: 6 },
+  actions: { display: 'flex', alignItems: 'center', gap: 12, marginTop: 22, flexWrap: 'wrap' },
   primaryBtn: {
     border: 'none',
     background: 'linear-gradient(135deg, #1E3A8A, #1E40AF)',
@@ -342,7 +324,7 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
     boxShadow: '0 12px 24px rgba(30, 58, 138, 0.35)',
-    fontSize: 16,
+    fontSize: 16
   },
   secondaryBtn: {
     border: '2px solid #F59E0B',
@@ -353,11 +335,7 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
     boxShadow: '0 10px 22px rgba(245,158,11,0.25)',
-    fontSize: 16,
+    fontSize: 16
   },
-  or: {
-    color: '#6b7280',
-    fontSize: 13,
-    padding: '0 6px',
-  },
+  or: { color: '#6b7280', fontSize: 13, padding: '0 6px' }
 };
