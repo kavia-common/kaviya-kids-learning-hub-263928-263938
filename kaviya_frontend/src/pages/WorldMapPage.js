@@ -429,7 +429,7 @@ export default function WorldMapPage() {
                     <span style={styles.metaLabel}>Status:</span>
                     {isLocked ? (
                       <span style={styles.lockBadge} role="status" aria-live="polite">
-                        🔒 Locked • Need {Math.max(0, thresholds[island.id] - xp)} XP
+                        🔒 Locked • Need {Math.max(0, (thresholds?.[island.id] ?? 0) - xp)} XP
                       </span>
                     ) : (
                       <span style={styles.unlockBadge} role="status" aria-live="polite">

@@ -64,7 +64,9 @@ export default function NavBar() {
   const onLogout = () => {
     // Log out kid session: clear kid profile and redirect home
     try {
-      localStorage.removeItem('kaviya.kidProfile');
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('kaviya.kidProfile');
+      }
     } catch {
       // ignore storage errors
     }

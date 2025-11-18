@@ -87,36 +87,43 @@ function App() {
 
   const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
 
+  // Guard BrowserRouter usage in non-browser environments
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
   return (
     <BrowserRouter>
-      <div className="App">
-        <button
-          className="theme-toggle"
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <Routes>
-          <Route path="/" element={<AppLayout><LandingPage /></AppLayout>} />
-          <Route path="/kid-auth" element={<AppLayout><KidAuthPage /></AppLayout>} />
-          <Route path="/parent" element={<AppLayout><ParentLoginPage /></AppLayout>} />
-          <Route path="/parent/dashboard" element={<AppLayout><ParentDashboard /></AppLayout>} />
-          <Route path="/dashboard" element={<AppLayout><WorldMapPage /></AppLayout>} />
-          <Route path="/kid-dashboard" element={<AppLayout><KidDashboard /></AppLayout>} />
-          <Route path="/quiz/:subject" element={<AppLayout><QuizPage /></AppLayout>} />
-          <Route path="/badges" element={<AppLayout><BadgesPage /></AppLayout>} />
-          <Route path="/stickers" element={<AppLayout><StickerBookPage /></AppLayout>} />
-          <Route path="/story" element={<AppLayout><StoryModePage /></AppLayout>} />
-          <Route path="/spin" element={<AppLayout><SpinPage /></AppLayout>} />
-          {/* Mini-Games hub and games */}
-          <Route path="/mini-games" element={<AppLayout><MiniGamesHub /></AppLayout>} />
-          <Route path="/mini-games/math-maze" element={<AppLayout><MiniGame_MathMaze /></AppLayout>} />
-          <Route path="/mini-games/word-builder" element={<AppLayout><MiniGame_WordBuilder /></AppLayout>} />
-          <Route path="/mini-games/science-match" element={<AppLayout><MiniGame_ScienceMatch /></AppLayout>} />
-          <Route path="/journal" element={<AppLayout><JournalPage /></AppLayout>} />
-        </Routes>
-      </div>
+      <AppLayout>
+        <div className="App">
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+          </button>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/kid-auth" element={<KidAuthPage />} />
+            <Route path="/parent" element={<ParentLoginPage />} />
+            <Route path="/parent/dashboard" element={<ParentDashboard />} />
+            <Route path="/dashboard" element={<WorldMapPage />} />
+            <Route path="/kid-dashboard" element={<KidDashboard />} />
+            <Route path="/quiz/:subject" element={<QuizPage />} />
+            <Route path="/badges" element={<BadgesPage />} />
+            <Route path="/stickers" element={<StickerBookPage />} />
+            <Route path="/story" element={<StoryModePage />} />
+            <Route path="/spin" element={<SpinPage />} />
+            {/* Mini-Games hub and games */}
+            <Route path="/mini-games" element={<MiniGamesHub />} />
+            <Route path="/mini-games/math-maze" element={<MiniGame_MathMaze />} />
+            <Route path="/mini-games/word-builder" element={<MiniGame_WordBuilder />} />
+            <Route path="/mini-games/science-match" element={<MiniGame_ScienceMatch />} />
+            <Route path="/journal" element={<JournalPage />} />
+          </Routes>
+        </div>
+      </AppLayout>
     </BrowserRouter>
   );
 }
