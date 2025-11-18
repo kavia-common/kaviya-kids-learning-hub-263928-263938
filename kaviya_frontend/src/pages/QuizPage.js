@@ -1,796 +1,478 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { usePet } from '../context/PetContext';
-import { awardForQuiz, getStreak } from '../utils/stickers';
+import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
+import '../App.css';
+import '../index.css';
+import { PetContext } from '../context/PetContext';
 
-/**
- * PUBLIC_INTERFACE
- * QuizPage
- * Animated, accessible quiz interface for subjects at /quiz/:subject.
- * Features:
- * - Large rounded answer buttons (navy with gold accents), hover/active states
- * - Animated transitions between questions (slide/fade)
- * - Feedback animations: confetti on correct, shake/pulse on incorrect
- * - Progress indicator (Question x of n) and score
- * - Local mock question sets for Math and Science
- * - Accessibility: focus management and ARIA live feedback
- * - Results screen with cheerful XP gain mock and button to return to /dashboard
- */
+// Corporate Navy theme tokens
+const COLORS = {
+  primary: '#1E3A8A', // Navy
+  accent: '#F59E0B',  // Gold
+  surface: '#FFFFFF',
+  bg: '#F3F4F6',
+  text: '#111827',
+  success: '#059669',
+  error: '#DC2626',
+};
+const RADIUS = 12;
+
+// Base question bank with difficulty + hint fields
+const sampleQuestions = [
+  { id: 1, question: 'What is 2 + 2?', options: ['3', '4', '5'], answer: '4', difficulty: 'easy', hint: 'Think of pairs!' },
+  { id: 2, question: 'What planet is known as the Red Planet?', options: ['Earth', 'Mars', 'Jupiter'], answer: 'Mars', difficulty: 'medium', hint: 'Named after the Roman god of war.' },
+  { id: 3, question: 'Spell the word for a young cat.', options: ['Kitten', 'Kiten', 'Kiton'], answer: 'Kitten', difficulty: 'easy', hint: "It rhymes with 'mitten'." },
+  { id: 4, question: 'What is 9 x 3?', options: ['27', '21', '24'], answer: '27', difficulty: 'hard', hint: "It's three less than 30." },
+];
+
+const MOODS = {
+  HAPPY: 'happy',
+  CONFUSED: 'confused',
+  EXCITED: 'excited',
+};
+
+const LAST_MOOD_KEY = 'kkh_last_mood';
+
+// PUBLIC_INTERFACE
 export default function QuizPage() {
-  const { subject } = useParams();
-  const navigate = useNavigate();
-  const pet = usePet();
+  /**
+   * QuizPage renders a quiz with adaptive next-quiz behavior based on mood.
+   * - Post-quiz MoodSelector persists last mood in localStorage.
+   * - Confused => extra hints + slower animations next quiz.
+   * - Excited => slightly harder questions + extra confetti.
+   * - Happy => normal difficulty + encouraging messages.
+   * - Integrates with PetContext for mood-based pet reactions.
+   * Accessibility:
+   * - Focus management for new questions and feedback.
+   * - ARIA live region for feedback.
+   * - Tooltip explaining mood usage.
+   */
+  const petCtx = useContext(PetContext);
+  const { encourage, setPetMood } = petCtx || { encourage: () => {}, setPetMood: () => {} };
 
-  // Mock data (can be replaced by API later)
-  const QUESTIONS = useMemo(() => {
-    const math = [
-      {
-        id: 'm1',
-        question: 'What is 7 + 5?',
-        choices: ['10', '11', '12', '13'],
-        answerIndex: 2,
-        hint: 'Add with your fingers!',
-      },
-      {
-        id: 'm2',
-        question: 'Which is an even number?',
-        choices: ['7', '9', '12', '15'],
-        answerIndex: 2,
-        hint: 'Even numbers can be split into two equal groups.',
-      },
-      {
-        id: 'm3',
-        question: 'What is 3 × 4?',
-        choices: ['7', '12', '14', '9'],
-        answerIndex: 1,
-        hint: 'Multiplication is repeated addition.',
-      },
-      {
-        id: 'm4',
-        question: 'What comes after 29?',
-        choices: ['28', '30', '31', '27'],
-        answerIndex: 1,
-        hint: 'Count up by one.',
-      },
-      {
-        id: 'm5',
-        question: 'Which shape has 4 equal sides?',
-        choices: ['Triangle', 'Rectangle', 'Square', 'Circle'],
-        answerIndex: 2,
-        hint: 'All sides the same length.',
-      },
-    ];
-    const science = [
-      {
-        id: 's1',
-        question: 'Plants make food using sunlight. What is this called?',
-        choices: ['Breathing', 'Photosynthesis', 'Digestion', 'Evaporation'],
-        answerIndex: 1,
-        hint: 'Photo = light!',
-      },
-      {
-        id: 's2',
-        question: 'Which of these is a gas we breathe in?',
-        choices: ['Oxygen', 'Gold', 'Water', 'Sand'],
-        answerIndex: 0,
-        hint: 'It helps our bodies use energy.',
-      },
-      {
-        id: 's3',
-        question: 'What planet do we live on?',
-        choices: ['Mars', 'Venus', 'Earth', 'Jupiter'],
-        answerIndex: 2,
-        hint: 'The blue planet!',
-      },
-      {
-        id: 's4',
-        question: 'What do bees collect from flowers?',
-        choices: ['Rocks', 'Nectar', 'Soil', 'Snow'],
-        answerIndex: 1,
-        hint: 'It’s sweet and tasty to them!',
-      },
-      {
-        id: 's5',
-        question: 'Water turns into gas when it...',
-        choices: ['Boils', 'Freezes', 'Melts', 'Rains'],
-        answerIndex: 0,
-        hint: 'Bubbles and steam!',
-      },
-    ];
-
-    return {
-      math,
-      science,
-    };
-  }, []);
-
-  const normalized = (subject || '').toLowerCase();
-  const questionSet = normalized === 'math' ? QUESTIONS.math : normalized === 'science' ? QUESTIONS.science : null;
-
-  const [index, setIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [status, setStatus] = useState('idle'); // 'idle' | 'correct' | 'incorrect' | 'transition' | 'done'
-  const [ariaMessage, setAriaMessage] = useState('');
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [awardedStickers, setAwardedStickers] = useState([]); // ids
-
-  const buttonsRef = useRef([]);
-  const cardRef = useRef(null);
-  const liveRegionRef = useRef(null);
-
-  useEffect(() => {
-    // If subject invalid, return to dashboard
-    if (!questionSet) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [navigate, questionSet]);
-
-  useEffect(() => {
-    // When question index changes, move focus to first answer button
-    const t = setTimeout(() => {
-      buttonsRef.current?.[0]?.focus();
-    }, 150);
-    return () => clearTimeout(t);
-  }, [index]);
-
-  useEffect(() => {
-    // Announce question changes
-    if (questionSet && questionSet[index]) {
-      setAriaMessage(`Question ${index + 1} of ${questionSet.length}. ${questionSet[index].question}`);
-    }
-  }, [index, questionSet]);
-
-  if (!questionSet) return null;
-
-  const total = questionSet.length;
-  const current = questionSet[index];
-
-  const handleChoice = (choiceIndex) => {
-    if (status === 'transition') return; // prevent double click during transition
-    const isCorrect = choiceIndex === current.answerIndex;
-
-    // Trigger pet answer reaction
+  // mood persisted and used for next-quiz adjustments
+  const [lastMood, setLastMood] = useState(() => {
     try {
-      pet?.reactToAnswer?.(isCorrect);
+      return localStorage.getItem(LAST_MOOD_KEY) || MOODS.HAPPY;
     } catch {
-      // ignore
+      return MOODS.HAPPY;
+    }
+  });
+
+  // animation speed multiplier (confused -> slower)
+  const [animSpeed, setAnimSpeed] = useState(1);
+  // confetti intensity (excited -> more)
+  const [confettiCount, setConfettiCount] = useState(15);
+  // hint availability (confused -> auto-enable and allow extra)
+  const [hintMode, setHintMode] = useState({ autoShow: false, extraHints: false });
+
+  // choose questions for this run based on lastMood
+  const questionSet = useMemo(() => {
+    const easy = sampleQuestions.filter(q => q.difficulty === 'easy');
+    const medium = sampleQuestions.filter(q => q.difficulty === 'medium');
+    const hard = sampleQuestions.filter(q => q.difficulty === 'hard');
+
+    if (lastMood === MOODS.EXCITED) {
+      // prefer harder mix if available: medium + hard, fallback to all
+      const mix = [...medium, ...hard];
+      return mix.length ? mix : sampleQuestions;
+    }
+    // happy or confused -> normal mix (lightly biased to easy/medium)
+    const mix = [...easy, ...medium];
+    return mix.length ? mix : sampleQuestions;
+  }, [lastMood]);
+
+  // selection + score
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState('');
+  const [score, setScore] = useState(0);
+  const [feedback, setFeedback] = useState('');
+  const [showHint, setShowHint] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  // refs for accessibility focus handling
+  const questionRef = useRef(null);
+  const feedbackLiveRef = useRef(null);
+  const tooltipRef = useRef(null);
+
+  const currentQuestion = questionSet[currentIndex];
+
+  // apply next-quiz behavior knobs derived from lastMood
+  useEffect(() => {
+    if (lastMood === MOODS.CONFUSED) {
+      setHintMode({ autoShow: true, extraHints: true });
+      setAnimSpeed(0.7);
+      setConfettiCount(10);
+    } else if (lastMood === MOODS.EXCITED) {
+      setHintMode({ autoShow: false, extraHints: false });
+      setAnimSpeed(1.1);
+      setConfettiCount(30);
+    } else {
+      setHintMode({ autoShow: false, extraHints: true }); // happy -> allow hint but not auto
+      setAnimSpeed(1);
+      setConfettiCount(18);
+    }
+  }, [lastMood]);
+
+  // reset per-question state and focus
+  useEffect(() => {
+    setSelectedAnswer('');
+    setFeedback('');
+    setShowHint(hintMode.autoShow);
+    // Focus the question for screen readers and keyboard users
+    if (questionRef.current) {
+      questionRef.current.focus();
+    }
+  }, [currentIndex, hintMode.autoShow]);
+
+  const handleAnswer = () => {
+    if (!selectedAnswer) return;
+    const correct = selectedAnswer === currentQuestion.answer;
+
+    if (correct) {
+      setScore(prev => prev + 1);
+      const msg = lastMood === MOODS.HAPPY
+        ? 'Awesome! You’re on a roll! ⭐'
+        : lastMood === MOODS.EXCITED
+          ? 'Boom! Nailed it! 🚀'
+          : 'Nice work! You got it!';
+      setFeedback(msg);
+      encourage && encourage('cheer'); // pet reacts positively
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 800);
+    } else {
+      const msg = lastMood === MOODS.CONFUSED
+        ? 'Good try! Peek at the hint and take your time.'
+        : 'Close! Try the hint and give it another shot.';
+      setFeedback(msg);
+      encourage && encourage('encourage'); // pet encourages
     }
 
-    if (isCorrect) {
-      setStatus('correct');
-      setScore((s) => s + 1);
-      setAriaMessage('Correct! 🎉');
-      triggerConfetti();
-      pulseCard();
-      // Next question after short delay
-      setTimeout(() => {
-        nextQuestion();
-      }, 900);
-    } else {
-      setStatus('incorrect');
-      setAriaMessage('Oops, not quite. Try the next one!');
-      shakeCard();
-      // Small delay, then allow move forward automatically
-      setTimeout(() => {
-        nextQuestion();
-      }, 1000);
+    // move focus to feedback live region
+    if (feedbackLiveRef.current) {
+      feedbackLiveRef.current.focus();
     }
   };
 
   const nextQuestion = () => {
-    if (index + 1 >= total) {
-      setStatus('done');
-      setAriaMessage(`Quiz complete! You scored ${score} out of ${total}.`);
-      // Award XP: 10 per correct
-      awardXp(10 * (score + 0));
-      try { pet?.addXp?.(10 * (score + 0)); } catch {}
-
-      // Sticker awards
-      const perfect = total > 0 && score === total;
-      const currentStreak = getStreak(); // previous streak before this award
-      const streakBonus = perfect && currentStreak + 1 >= 3;
-      const stickers = awardForQuiz({ score, total, perfect, streakBonus });
-      setAwardedStickers(stickers);
-
-      // Pet reacts to result mood
-      const ratio = total > 0 ? (score / total) : 0;
-      const mood = ratio >= 0.8 ? 'excited' : ratio >= 0.5 ? 'happy' : 'confused';
-      try { pet?.reactToResult?.(mood); } catch {}
-
-      // Record completion to reflect on World Map
-      recordCompletion();
-      return;
+    if (currentIndex + 1 >= questionSet.length) {
+      setCompleted(true);
+    } else {
+      setCurrentIndex(prev => prev + 1);
     }
-    setStatus('transition');
-    // slide out/in animation
-    slideOutIn(() => {
-      setIndex((i) => i + 1);
-      setStatus('idle');
-    });
   };
 
-  const slideOutIn = (cb) => {
-    const el = cardRef.current;
-    if (!el) {
-      cb();
-      return;
-    }
-    el.classList.remove('slide-in');
-    el.classList.add('slide-out');
-    setTimeout(() => {
-      cb();
-      el.classList.remove('slide-out');
-      el.classList.add('slide-in');
-    }, 220);
-  };
+  // mood selection component at end
+  const [selectedMood, setSelectedMood] = useState(lastMood);
+  const [moodNote, setMoodNote] = useState('');
 
-  const pulseCard = () => {
-    const el = cardRef.current;
-    if (!el) return;
-    el.classList.remove('pulse');
-    // reflow
-    void el.offsetWidth;
-    el.classList.add('pulse');
-  };
-
-  const shakeCard = () => {
-    const el = cardRef.current;
-    if (!el) return;
-    el.classList.remove('shake');
-    // reflow
-    void el.offsetWidth;
-    el.classList.add('shake');
-  };
-
-  const triggerConfetti = () => {
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 900);
-  };
-
-  const handleRestart = () => {
-    setIndex(0);
-    setScore(0);
-    setStatus('idle');
-    setAriaMessage('Restarted quiz.');
-    buttonsRef.current?.[0]?.focus();
-  };
-
-  function recordCompletion() {
+  const saveMood = (m) => {
+    setSelectedMood(m);
+    setMoodNote(
+      m === MOODS.CONFUSED
+        ? 'We’ll slow things down and show extra hints next time.'
+        : m === MOODS.EXCITED
+          ? 'Next round will be a tiny bit harder with more celebration!'
+          : 'Great! We’ll keep cheering you on with normal pace.'
+    );
     try {
-      const key = 'kaviya.completed';
-      const prev = JSON.parse(localStorage.getItem(key) || 'null') || {};
-      const subjectKey = (normalized || 'other').toLowerCase();
-      const next = {
-        ...prev,
-        [subjectKey]: Number(prev[subjectKey] || 0) + 1,
-      };
-      localStorage.setItem(key, JSON.stringify(next));
+      localStorage.setItem(LAST_MOOD_KEY, m);
     } catch {
-      // ignore
+      // ok if storage blocked
     }
-  }
-
-  const handleBackToDashboard = () => {
-    navigate('/dashboard');
+    setLastMood(m);
+    setPetMood && setPetMood(m); // pet changes expression
+    encourage && encourage(m === MOODS.CONFUSED ? 'soothe' : 'cheer');
   };
 
-  // PUBLIC_INTERFACE
-  function awardXp(amount) {
-    /**
-     * Adds XP to localStorage "kaviya.kidXP" to influence world map locks.
-     * Safe no-op on storage errors.
-     */
-    try {
-      const current = JSON.parse(localStorage.getItem('kaviya.kidXP') || '0') || 0;
-      const next = Math.max(0, Number(current) + Number(amount || 0));
-      localStorage.setItem('kaviya.kidXP', JSON.stringify(next));
-    } catch {
-      // ignore
-    }
-  }
+  // simple tooltip logic for explaining mood usage
+  const [showTooltip, setShowTooltip] = useState(false);
 
-  const progressPercent = Math.round(((index + (status === 'done' ? 1 : 0)) / total) * 100);
+  // Styles
+  const containerStyle = {
+    padding: 20,
+    background: COLORS.bg,
+    minHeight: '100vh',
+  };
+  const cardStyle = {
+    background: COLORS.surface,
+    borderRadius: RADIUS,
+    boxShadow: '0 6px 18px rgba(0,0,0,0.06)',
+    padding: 20,
+    border: `1px solid ${COLORS.primary}20`,
+    transition: `transform ${250 / animSpeed}ms ease, box-shadow ${250 / animSpeed}ms ease`,
+  };
+  const headerStyle = {
+    color: COLORS.primary,
+    marginBottom: 12,
+  };
+  const btn = {
+    background: COLORS.primary,
+    color: 'white',
+    border: 'none',
+    padding: '10px 14px',
+    borderRadius: 10,
+    cursor: 'pointer',
+  };
+  const btnSecondary = {
+    background: COLORS.accent,
+    color: '#1f2937',
+    border: 'none',
+    padding: '10px 14px',
+    borderRadius: 10,
+    cursor: 'pointer',
+    marginLeft: 8,
+  };
+  const radioWrap = {
+    display: 'block',
+    marginBottom: 8,
+    padding: '8px 10px',
+    borderRadius: 10,
+    border: `1px solid ${COLORS.primary}30`,
+  };
+  const hintBox = {
+    marginTop: 8,
+    fontStyle: 'italic',
+    background: '#fff7ed',
+    border: `1px dashed ${COLORS.accent}`,
+    padding: 10,
+    borderRadius: 10,
+    color: '#7c2d12',
+  };
+  const liveRegionStyle = {
+    outline: 'none',
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 10,
+    background: '#eef2ff',
+    border: `1px solid ${COLORS.primary}40`,
+  };
 
   return (
-    <main style={styles.wrap} aria-labelledby="quiz-title">
-      <div style={styles.container}>
-        <header style={styles.header}>
+    <div style={containerStyle}>
+      <div style={{ ...cardStyle }}>
+        <h2 style={headerStyle}>Quiz Time!</h2>
+
+        {!completed ? (
           <div>
-            <h1 id="quiz-title" style={styles.title}>
-              {normalized === 'math' ? 'Math Quiz 🔢' : 'Science Quiz 🔬'}
-            </h1>
-            <p style={styles.subtitle}>
-              Question {Math.min(index + 1, total)} of {total} • Score: {score}
+            <p
+              ref={questionRef}
+              tabIndex={-1}
+              style={{ fontWeight: 600 }}
+              aria-live="polite"
+            >
+              <strong>Question {currentIndex + 1}:</strong> {currentQuestion?.question}
             </p>
-          </div>
 
-          <div style={styles.progressWrap} aria-hidden="true" title={`Progress ${progressPercent}%`}>
-            <div style={styles.progressTrack}>
-              <div style={{ ...styles.progressFill, width: `${progressPercent}%` }} />
+            <div role="group" aria-label="Answer options">
+              {currentQuestion?.options.map((opt) => (
+                <label key={opt} style={radioWrap}>
+                  <input
+                    type="radio"
+                    name="answer"
+                    value={opt}
+                    checked={selectedAnswer === opt}
+                    onChange={(e) => setSelectedAnswer(e.target.value)}
+                  />
+                  {' '}
+                  {opt}
+                </label>
+              ))}
             </div>
-            <span style={styles.progressPct}>{progressPercent}%</span>
-          </div>
-        </header>
 
-        {/* Live region for feedback */}
-        <div
-          ref={liveRegionRef}
-          aria-live="polite"
-          aria-atomic="true"
-          style={styles.visuallyHidden}
-        >
-          {ariaMessage}
-        </div>
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center' }}>
+              <button
+                style={btnSecondary}
+                onClick={() => setShowHint((s) => !s)}
+                aria-expanded={showHint}
+                aria-controls="hint-panel"
+              >
+                {showHint ? 'Hide hint' : 'Show hint'}
+              </button>
 
-        {status !== 'done' ? (
-          <section
-            ref={cardRef}
-            className="slide-in"
-            style={styles.card}
-            aria-label={`Question ${index + 1}`}
-          >
-            <div style={styles.questionRow}>
-              <div style={styles.qIcon} aria-hidden="true">
-                {normalized === 'math' ? '➗' : '🧪'}
+              {hintMode.extraHints && (
+                <span
+                  style={{ marginLeft: 10, color: COLORS.accent, fontSize: 12 }}
+                  aria-label="Extra hints enabled"
+                >
+                  Extra hints enabled
+                </span>
+              )}
+            </div>
+
+            {showHint && (
+              <div id="hint-panel" style={hintBox}>
+                Hint: {currentQuestion?.hint}
+                {hintMode.extraHints && (
+                  <div style={{ marginTop: 6 }}>
+                    Tip: Try removing options that can’t be right first.
+                  </div>
+                )}
               </div>
-              <h2 style={styles.questionText}>{current.question}</h2>
+            )}
+
+            <div style={{ marginTop: 12 }}>
+              <button
+                style={{ ...btn, opacity: selectedAnswer ? 1 : 0.6 }}
+                onClick={handleAnswer}
+                disabled={!selectedAnswer}
+              >
+                Check Answer
+              </button>
+              <button style={btnSecondary} onClick={nextQuestion} aria-label="Next question">
+                Next
+              </button>
             </div>
 
-            <div role="group" aria-label="Answer choices" style={styles.choicesGrid}>
-              {current.choices.map((c, i) => {
-                const isCorrect = i === current.answerIndex;
-                const isSelectedState = status === 'correct' || status === 'incorrect';
-                const stateStyle =
-                  isSelectedState && isCorrect
-                    ? styles.choiceCorrect
-                    : isSelectedState && !isCorrect
-                    ? styles.choiceDisabled
-                    : {};
-                return (
-                  <button
-                    key={i}
-                    ref={(el) => (buttonsRef.current[i] = el)}
-                    style={{ ...styles.choiceBtn, ...stateStyle }}
-                    onClick={() => handleChoice(i)}
-                    disabled={status === 'transition'}
-                    aria-label={`Answer ${i + 1}: ${c}`}
-                  >
-                    <span style={styles.choiceLabel}>{String.fromCharCode(65 + i)}</span>
-                    <span>{c}</span>
-                  </button>
-                );
-              })}
+            <div
+              ref={feedbackLiveRef}
+              tabIndex={-1}
+              role="status"
+              aria-live="polite"
+              style={liveRegionStyle}
+            >
+              {feedback}
             </div>
 
-            <div style={styles.hintRow}>
-              <span style={styles.hintLabel}>Hint:</span>
-              <span style={styles.hintText}>{current.hint}</span>
+            <div style={{ marginTop: 12, color: COLORS.text }}>
+              Score: {score} / {questionSet.length}
             </div>
-          </section>
+          </div>
         ) : (
-          <section style={styles.card} aria-label="Results">
-            <div style={styles.resultsHead}>
-              <div style={styles.resultsIcon} aria-hidden="true">
-                🏆
-              </div>
-              <h2 style={styles.resultsTitle}>Great job!</h2>
-              <p style={styles.resultsSub}>
-                You scored {score} out of {total}.
-              </p>
+          <div>
+            <h3 style={{ color: COLORS.primary, marginBottom: 4 }}>All done!</h3>
+            <p>Your score: {score} / {questionSet.length}</p>
+
+            {/* Simple confetti simulation with emojis for accessibility-friendly celebration */}
+            <div aria-hidden="true" style={{ margin: '10px 0', fontSize: 18 }}>
+              {'🎉'.repeat(Math.min(confettiCount, 50))}
             </div>
 
-            <div style={styles.xpBox} role="status" aria-live="polite">
-              <div style={styles.xpBadge} aria-hidden="true">
-                ✨
+            {/* Mood selector with tooltip */}
+            <div style={{ marginTop: 16, position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                <h4 style={{ margin: 0, color: COLORS.primary }}>How did that feel?</h4>
+                <button
+                  ref={tooltipRef}
+                  aria-describedby={showTooltip ? 'mood-tip' : undefined}
+                  aria-label="What is this for?"
+                  onClick={() => setShowTooltip(s => !s)}
+                  onBlur={() => setShowTooltip(false)}
+                  style={{
+                    marginLeft: 8,
+                    background: 'transparent',
+                    border: `1px solid ${COLORS.primary}`,
+                    color: COLORS.primary,
+                    borderRadius: '50%',
+                    width: 24,
+                    height: 24,
+                    lineHeight: '22px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                  }}
+                >
+                  i
+                </button>
               </div>
-              <div>
-                <div style={styles.xpTitle}>XP Gained</div>
-                <div style={styles.xpAmount}>
-                  +{10 * score} XP
-                </div>
-                <div style={styles.xpFootnote}>Keep it up to level up faster!</div>
-              </div>
-            </div>
 
-            {/* Sticker awards summary */}
-            {awardedStickers?.length ? (
-              <div style={{ ...styles.card, marginTop: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <div style={{ fontWeight: 800, color: '#1E3A8A' }}>Stickers Awarded</div>
-                  <span aria-hidden="true">🎁</span>
+              {showTooltip && (
+                <div
+                  id="mood-tip"
+                  role="tooltip"
+                  style={{
+                    position: 'absolute',
+                    top: 36,
+                    left: 0,
+                    background: COLORS.surface,
+                    border: `1px solid ${COLORS.primary}33`,
+                    padding: 10,
+                    borderRadius: 8,
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+                    maxWidth: 320,
+                    zIndex: 5,
+                    color: COLORS.text,
+                  }}
+                >
+                  Pick a mood to help us adapt the next quiz:
+                  - Confused: extra hints + slower pace
+                  - Excited: slightly harder + more celebration
+                  - Happy: normal difficulty with cheers
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {awardedStickers.map((id, i) => (
-                    <AwardChip key={i} id={id} />
-                  ))}
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <button style={styles.secondaryBtn} onClick={() => navigate('/stickers')}>
-                    Open Sticker Book
-                  </button>
-                </div>
-              </div>
-            ) : null}
+              )}
 
-            <div style={styles.resultsActions}>
-              <button style={styles.primaryBtn} onClick={handleRestart} autoFocus>
-                Try Again 🔁
-              </button>
-              <button style={styles.secondaryBtn} onClick={handleBackToDashboard}>
-                Back to Dashboard
-              </button>
+              <fieldset
+                aria-label="Select your mood"
+                style={{
+                  border: `1px solid ${COLORS.primary}33`,
+                  borderRadius: 10,
+                  padding: 12,
+                }}
+              >
+                <legend style={{ color: COLORS.primary }}>Mood</legend>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <label style={radioWrap}>
+                    <input
+                      type="radio"
+                      name="mood"
+                      value={MOODS.HAPPY}
+                      checked={selectedMood === MOODS.HAPPY}
+                      onChange={() => saveMood(MOODS.HAPPY)}
+                    />
+                    {' '}🙂 Happy
+                  </label>
+                  <label style={radioWrap}>
+                    <input
+                      type="radio"
+                      name="mood"
+                      value={MOODS.CONFUSED}
+                      checked={selectedMood === MOODS.CONFUSED}
+                      onChange={() => saveMood(MOODS.CONFUSED)}
+                    />
+                    {' '}😕 Confused
+                  </label>
+                  <label style={radioWrap}>
+                    <input
+                      type="radio"
+                      name="mood"
+                      value={MOODS.EXCITED}
+                      checked={selectedMood === MOODS.EXCITED}
+                      onChange={() => saveMood(MOODS.EXCITED)}
+                    />
+                    {' '}🤩 Excited
+                  </label>
+                </div>
+              </fieldset>
+
+              {moodNote && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    marginTop: 10,
+                    padding: 10,
+                    borderRadius: 10,
+                    background: '#ecfeff',
+                    border: `1px solid ${COLORS.accent}55`,
+                    color: COLORS.text,
+                  }}
+                >
+                  {moodNote}
+                </div>
+              )}
             </div>
-          </section>
+          </div>
         )}
-
-        {/* Local animation styles */}
-        <style>{`
-          .slide-in {
-            animation: slideIn 240ms ease both;
-          }
-          .slide-out {
-            animation: slideOut 200ms ease both;
-          }
-          .pulse {
-            animation: pulse 450ms ease;
-          }
-          .shake {
-            animation: shake 350ms ease;
-          }
-          @keyframes slideIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes slideOut {
-            from { opacity: 1; transform: translateY(0); }
-            to { opacity: 0; transform: translateY(-8px); }
-          }
-          @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
-          }
-          @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-6px); }
-            50% { transform: translateX(6px); }
-            75% { transform: translateX(-3px); }
-          }
-        `}</style>
       </div>
 
-      {showConfetti && <ConfettiOverlay />}
-    </main>
-  );
-}
-
-/**
- * Simple confetti overlay (CSS-based circles) to avoid extra deps.
- */
-function ConfettiOverlay() {
-  const pieces = Array.from({ length: 24 }, (_, i) => i);
-  return (
-    <div aria-hidden="true" style={confettiStyles.wrap}>
-      {pieces.map((i) => (
-        <span
-          key={i}
-          style={{
-            ...confettiStyles.piece,
-            left: `${(i * 37) % 100}%`,
-            animationDelay: `${(i % 6) * 80}ms`,
-            background:
-              i % 4 === 0
-                ? '#F59E0B'
-                : i % 4 === 1
-                ? '#1E3A8A'
-                : i % 4 === 2
-                ? '#10B981'
-                : '#8B5CF6',
-          }}
-        />
-      ))}
-      <style>{`
-        @keyframes fall {
-          0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
-          10% { opacity: 1; }
-          100% { transform: translateY(120vh) rotate(540deg); opacity: 0; }
-        }
-      `}</style>
+      {/* Overlay confetti */}
+      {showConfetti && (
+        <div aria-hidden="true" style={{
+          position: 'fixed', inset: 0, pointerEvents: 'none', display: 'grid', placeItems: 'center',
+          color: COLORS.accent, fontSize: 28
+        }}>
+          🎊
+        </div>
+      )}
     </div>
   );
 }
-
-function AwardChip({ id }) {
-  const defs = useMemo(() => {
-    // local small cache of definitions
-    try {
-      const all = require('../utils/stickers'); // dynamic not ideal; safe within bundler
-      if (all && all.getAllStickersFlat) {
-        return all.getAllStickersFlat();
-      }
-    } catch {}
-    return [];
-  }, []);
-  const def = defs.find((d) => d.id === id);
-  const chipStyle = {
-    border: '1px solid rgba(17,24,39,0.08)',
-    background: '#fff',
-    borderRadius: 999,
-    padding: '6px 10px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    boxShadow: '0 8px 16px rgba(0,0,0,0.08)',
-    fontSize: 14,
-    color: '#111827',
-  };
-  const emojiStyle = {
-    height: 28,
-    width: 28,
-    borderRadius: 999,
-    display: 'grid',
-    placeItems: 'center',
-    background: 'linear-gradient(135deg, #1E3A8A22, #F59E0B22)',
-    fontSize: 16,
-  };
-  return (
-    <span style={chipStyle} title={def?.name || id}>
-      <span style={emojiStyle} aria-hidden="true">{def?.emoji || '✨'}</span>
-      <span>{def?.name || id}</span>
-    </span>
-  );
-}
-
-const styles = {
-  wrap: {
-    minHeight: '100vh',
-    padding: '28px 16px 48px',
-    background:
-      'radial-gradient(1200px 600px at 20% 20%, rgba(30, 58, 138, 0.06), transparent), ' +
-      'radial-gradient(1000px 500px at 80% 30%, rgba(245, 158, 11, 0.08), transparent), ' +
-      'linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%)',
-  },
-  container: {
-    maxWidth: 980,
-    margin: '0 auto',
-    display: 'grid',
-    gap: 16,
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  title: {
-    margin: 0,
-    fontSize: 28,
-    color: '#1E3A8A',
-    letterSpacing: '-0.01em',
-  },
-  subtitle: {
-    margin: '6px 0 0',
-    color: '#374151',
-    fontSize: 14,
-  },
-  progressWrap: {
-    display: 'grid',
-    gap: 6,
-    alignContent: 'end',
-    minWidth: 220,
-  },
-  progressTrack: {
-    height: 12,
-    background: '#E5E7EB',
-    borderRadius: 999,
-    overflow: 'hidden',
-    border: '1px solid #E5E7EB',
-  },
-  progressFill: {
-    height: '100%',
-    background:
-      'linear-gradient(90deg, rgba(245,158,11,1) 0%, rgba(251,191,36,1) 60%, rgba(253,230,138,1) 100%)',
-    transition: 'width 300ms ease',
-  },
-  progressPct: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'right',
-  },
-  card: {
-    background: '#fff',
-    borderRadius: 18,
-    border: '1px solid rgba(17, 24, 39, 0.06)',
-    padding: 16,
-    boxShadow: '0 10px 30px rgba(17,24,39,0.15)',
-  },
-  questionRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-  },
-  qIcon: {
-    height: 44,
-    width: 44,
-    borderRadius: 12,
-    display: 'grid',
-    placeItems: 'center',
-    background: 'linear-gradient(135deg, #1E3A8A22, #F59E0B22)',
-    fontSize: 22,
-  },
-  questionText: {
-    margin: 0,
-    fontSize: 20,
-    color: '#111827',
-  },
-  choicesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: 12,
-    marginTop: 12,
-  },
-  choiceBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    border: '2px solid #1E3A8A',
-    background: 'linear-gradient(135deg, #1E3A8A, #1E40AF)',
-    color: '#fff',
-    borderRadius: 16,
-    padding: '16px 18px',
-    fontSize: 16,
-    fontWeight: 700,
-    cursor: 'pointer',
-    boxShadow: '0 12px 24px rgba(30, 58, 138, 0.35)',
-    transition: 'transform 0.12s ease, box-shadow 0.12s ease, background 0.2s ease',
-  },
-  choiceCorrect: {
-    background: 'linear-gradient(135deg, #059669, #10B981)',
-    borderColor: '#059669',
-    boxShadow: '0 12px 24px rgba(5, 150, 105, 0.35)',
-  },
-  choiceDisabled: {
-    background: 'linear-gradient(135deg, #6B7280, #9CA3AF)',
-    borderColor: '#6B7280',
-    boxShadow: '0 10px 20px rgba(107, 114, 128, 0.25)',
-    opacity: 0.9,
-  },
-  choiceLabel: {
-    height: 30,
-    width: 30,
-    minWidth: 30,
-    borderRadius: 999,
-    display: 'grid',
-    placeItems: 'center',
-    background: '#F59E0B',
-    color: '#111827',
-    fontWeight: 900,
-    border: '2px solid #B45309',
-    boxShadow: '0 6px 14px rgba(245, 158, 11, 0.35)',
-  },
-  hintRow: {
-    marginTop: 8,
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: 8,
-  },
-  hintLabel: {
-    fontWeight: 800,
-    color: '#1E3A8A',
-  },
-  hintText: {
-    color: '#374151',
-  },
-  resultsHead: {
-    textAlign: 'center',
-    marginTop: 6,
-    marginBottom: 6,
-  },
-  resultsIcon: {
-    fontSize: 40,
-  },
-  resultsTitle: {
-    margin: '8px 0 4px',
-    fontSize: 24,
-    color: '#1E3A8A',
-  },
-  resultsSub: {
-    margin: 0,
-    color: '#374151',
-  },
-  xpBox: {
-    marginTop: 12,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    border: '2px solid #F59E0B',
-    background: '#FFFBEB',
-    borderRadius: 16,
-    padding: 12,
-  },
-  xpBadge: {
-    height: 44,
-    width: 44,
-    borderRadius: 12,
-    display: 'grid',
-    placeItems: 'center',
-    background: 'linear-gradient(135deg, #F59E0B, #FCD34D)',
-    color: '#111827',
-    fontWeight: 900,
-    border: '2px solid #B45309',
-    boxShadow: '0 8px 18px rgba(245, 158, 11, 0.35)',
-    fontSize: 22,
-  },
-  xpTitle: {
-    fontWeight: 800,
-    color: '#92400E',
-    fontSize: 14,
-    letterSpacing: '0.02em',
-  },
-  xpAmount: {
-    marginTop: 2,
-    fontWeight: 900,
-    color: '#111827',
-    fontSize: 18,
-  },
-  xpFootnote: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  resultsActions: {
-    display: 'flex',
-    gap: 10,
-    justifyContent: 'center',
-    marginTop: 14,
-    flexWrap: 'wrap',
-  },
-  primaryBtn: {
-    border: 'none',
-    background: 'linear-gradient(135deg, #1E3A8A, #1E40AF)',
-    color: '#fff',
-    borderRadius: 999,
-    padding: '12px 20px',
-    fontWeight: 800,
-    cursor: 'pointer',
-    boxShadow: '0 12px 24px rgba(30, 58, 138, 0.35)',
-    fontSize: 16,
-    transition: 'transform 0.12s ease, box-shadow 0.12s ease',
-  },
-  secondaryBtn: {
-    border: '2px solid #F59E0B',
-    background: '#fff',
-    color: '#1E3A8A',
-    borderRadius: 999,
-    padding: '12px 20px',
-    fontWeight: 700,
-    cursor: 'pointer',
-    boxShadow: '0 10px 22px rgba(245,158,11,0.25)',
-    fontSize: 16,
-    transition: 'transform 0.12s ease, box-shadow 0.12s ease',
-  },
-  visuallyHidden: {
-    position: 'absolute',
-    left: -9999,
-    width: 1,
-    height: 1,
-    overflow: 'hidden',
-  },
-};
-
-const confettiStyles = {
-  wrap: {
-    position: 'fixed',
-    inset: 0,
-    pointerEvents: 'none',
-    overflow: 'hidden',
-    zIndex: 40,
-  },
-  piece: {
-    position: 'absolute',
-    top: '-10px',
-    width: '10px',
-    height: '14px',
-    borderRadius: '2px',
-    animation: 'fall 900ms ease forwards',
-  },
-};
