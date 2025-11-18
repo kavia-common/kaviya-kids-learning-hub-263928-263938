@@ -25,7 +25,8 @@ const VoiceControl = ({ id = 'voice-control', initialEnabled = false }) => {
   const navigate = useNavigate();
   const [enabled, setEnabled] = useState(() => {
     try {
-      const saved = localStorage.getItem('kaviya.voice.enabled');
+      if (typeof window === 'undefined') return initialEnabled;
+      const saved = window.localStorage.getItem('kaviya.voice.enabled');
       return saved !== null ? saved === 'true' : initialEnabled;
     } catch {
       return initialEnabled;
@@ -110,6 +111,11 @@ const VoiceControl = ({ id = 'voice-control', initialEnabled = false }) => {
 
   // Detect Web Speech API support
   useEffect(() => {
+    // Guard for non-browser/SSR environments
+    if (typeof window === 'undefined') {
+      setSupported(false);
+      return;
+    }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     setSupported(!!SpeechRecognition);
     if (!SpeechRecognition) return;
@@ -167,7 +173,9 @@ const VoiceControl = ({ id = 'voice-control', initialEnabled = false }) => {
   // Persist preference and start/stop recognition on toggle
   useEffect(() => {
     try {
-      localStorage.setItem('kaviya.voice.enabled', String(enabled));
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('kaviya.voice.enabled', String(enabled));
+      }
     } catch {
       /* ignore persistence errors */
     }
@@ -204,16 +212,16 @@ const VoiceControl = ({ id = 'voice-control', initialEnabled = false }) => {
       };
 
       if (t.includes('start quiz') || t.includes('start the quiz') || t.includes('open quiz')) {
-        go('/quiz', 'Opening Quiz page.');
+        go('/quiz/math', 'Opening Quiz page.');
         return;
       }
       if (t.includes('math island') || t.includes('go to math')) {
-        // World map with anchor or state could be used; navigate to world map
-        go('/world', 'Going to Math Island.');
+        // Navigate to world map (dashboard) then kid can choose Math
+        go('/dashboard', 'Going to Math Island.');
         return;
       }
       if (t.includes('science island') || t.includes('go to science')) {
-        go('/world', 'Going to Science Island.');
+        go('/dashboard', 'Going to Science Island.');
         return;
       }
       if (t.includes('sticker book') || t.includes('open stickers') || t.includes('open sticker')) {
@@ -221,7 +229,7 @@ const VoiceControl = ({ id = 'voice-control', initialEnabled = false }) => {
         return;
       }
       if (t.includes('mini game') || t.includes('mini-games') || t.includes('open mini') || t.includes('open games')) {
-        go('/minigames', 'Opening Mini-Games hub.');
+        go('/mini-games', 'Opening Mini-Games hub.');
         return;
       }
       if (t.includes('go home') || t.includes('home')) {

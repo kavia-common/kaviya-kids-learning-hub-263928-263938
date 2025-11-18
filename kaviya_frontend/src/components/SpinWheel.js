@@ -52,14 +52,16 @@ function getNow() {
 }
 
 function canSpin(now = getNow()) {
-  const last = localStorage.getItem(SPIN_STORAGE_KEYS.lastSpinAt);
+  if (typeof window === 'undefined') return false;
+  const last = window.localStorage.getItem(SPIN_STORAGE_KEYS.lastSpinAt);
   if (!last) return true;
   const lastDate = new Date(last);
   return now.getTime() - lastDate.getTime() >= ONE_DAY_MS;
 }
 
 function timeRemaining(now = getNow()) {
-  const last = localStorage.getItem(SPIN_STORAGE_KEYS.lastSpinAt);
+  if (typeof window === 'undefined') return ONE_DAY_MS;
+  const last = window.localStorage.getItem(SPIN_STORAGE_KEYS.lastSpinAt);
   if (!last) return 0;
   const lastDate = new Date(last);
   const diff = ONE_DAY_MS - (now.getTime() - lastDate.getTime());
@@ -74,7 +76,8 @@ function formatDuration(ms) {
 
 function getAccessories() {
   try {
-    const raw = localStorage.getItem(SPIN_STORAGE_KEYS.accessories);
+    if (typeof window === 'undefined') return [];
+    const raw = window.localStorage.getItem(SPIN_STORAGE_KEYS.accessories);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -82,34 +85,39 @@ function getAccessories() {
 }
 
 function setAccessories(arr) {
-  localStorage.setItem(SPIN_STORAGE_KEYS.accessories, JSON.stringify(arr));
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(SPIN_STORAGE_KEYS.accessories, JSON.stringify(arr));
 }
 
 function getXP() {
-  const raw = localStorage.getItem(SPIN_STORAGE_KEYS.xp);
+  if (typeof window === 'undefined') return 0;
+  const raw = window.localStorage.getItem(SPIN_STORAGE_KEYS.xp);
   const n = Number(raw);
   return Number.isFinite(n) ? n : 0;
 }
 
 function setXP(n) {
-  localStorage.setItem(SPIN_STORAGE_KEYS.xp, String(n));
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(SPIN_STORAGE_KEYS.xp, String(n));
 }
 
 function getTickets() {
-  const raw = localStorage.getItem(SPIN_STORAGE_KEYS.tickets);
+  if (typeof window === 'undefined') return 0;
+  const raw = window.localStorage.getItem(SPIN_STORAGE_KEYS.tickets);
   const n = Number(raw);
   return Number.isFinite(n) ? n : 0;
 }
 
 function setTickets(n) {
-  localStorage.setItem(SPIN_STORAGE_KEYS.tickets, String(n));
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(SPIN_STORAGE_KEYS.tickets, String(n));
 }
 
 /**
  * Draws a reward from the pool honoring weights and "no consecutive rare repeat".
  */
 function drawReward() {
-  const lastRewardId = localStorage.getItem(SPIN_STORAGE_KEYS.lastRewardId);
+  const lastRewardId = (typeof window !== 'undefined') ? window.localStorage.getItem(SPIN_STORAGE_KEYS.lastRewardId) : null;
 
   const totalWeight = REWARDS_POOL.reduce((sum, r) => sum + r.weight, 0);
   // Attempt drawing with constraint. If the drawn reward violates, redraw up to N times then fallback.
@@ -129,7 +137,7 @@ function drawReward() {
     }
   }
   // Fallback: pick the highest weight non-equal rare/uncommon if last rare; else first common
-  const lastReward = REWARDS_POOL.find(r => r.id === localStorage.getItem(SPIN_STORAGE_KEYS.lastRewardId));
+  const lastReward = REWARDS_POOL.find(r => r.id === ((typeof window !== 'undefined') ? window.localStorage.getItem(SPIN_STORAGE_KEYS.lastRewardId) : null));
   if (lastReward && (lastReward.rarity === 'rare' || lastReward.rarity === 'uncommon')) {
     const alt = [...REWARDS_POOL]
       .filter(r => r.id !== lastReward.id)
@@ -194,8 +202,10 @@ export default function SpinWheel({ autoSpin = false, onAfterGrant }) {
         setAccessories(inv);
       }
     }
-    localStorage.setItem(SPIN_STORAGE_KEYS.lastSpinAt, new Date().toISOString());
-    localStorage.setItem(SPIN_STORAGE_KEYS.lastRewardId, reward.id);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(SPIN_STORAGE_KEYS.lastSpinAt, new Date().toISOString());
+      window.localStorage.setItem(SPIN_STORAGE_KEYS.lastRewardId, reward.id);
+    }
   }
 
   function handleSpin() {

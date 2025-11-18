@@ -12,10 +12,15 @@ const SPIN_LAST = 'lms.spin.lastSpinAt';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function canSpin() {
-  const last = localStorage.getItem(SPIN_LAST);
-  if (!last) return true;
-  const lastDate = new Date(last);
-  return Date.now() - lastDate.getTime() >= ONE_DAY_MS;
+  try {
+    if (typeof window === 'undefined') return false;
+    const last = window.localStorage.getItem(SPIN_LAST);
+    if (!last) return true;
+    const lastDate = new Date(last);
+    return Date.now() - lastDate.getTime() >= ONE_DAY_MS;
+  } catch {
+    return false;
+  }
 }
 
 export default function WorldMapPage() {
@@ -36,22 +41,32 @@ export default function WorldMapPage() {
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem('kaviya.kidProfile') || 'null');
-      if (stored) setProfile(stored);
+      if (typeof window !== 'undefined') {
+        const stored = JSON.parse(window.localStorage.getItem('kaviya.kidProfile') || 'null');
+        if (stored) setProfile(stored);
+      }
     } catch {}
     try {
-      const storedXP = JSON.parse(localStorage.getItem('kaviya.kidXP') || 'null');
-      if (typeof storedXP === 'number') setXp(storedXP);
-      else setXp(120);
+      if (typeof window !== 'undefined') {
+        const storedXP = JSON.parse(window.localStorage.getItem('kaviya.kidXP') || 'null');
+        if (typeof storedXP === 'number') setXp(storedXP);
+        else setXp(120);
+      } else {
+        setXp(120);
+      }
     } catch { setXp(120); }
     try {
-      const storedComp = JSON.parse(localStorage.getItem('kaviya.completed') || 'null');
-      if (storedComp && typeof storedComp === 'object') {
-        setCompleted({
-          math: Number(storedComp.math || 0),
-          grammar: Number(storedComp.grammar || 0),
-          science: Number(storedComp.science || 0),
-        });
+      if (typeof window !== 'undefined') {
+        const storedComp = JSON.parse(window.localStorage.getItem('kaviya.completed') || 'null');
+        if (storedComp && typeof storedComp === 'object') {
+          setCompleted({
+            math: Number(storedComp.math || 0),
+            grammar: Number(storedComp.grammar || 0),
+            science: Number(storedComp.science || 0),
+          });
+        } else {
+          setCompleted({ math: 3, grammar: 0, science: 1 });
+        }
       } else {
         setCompleted({ math: 3, grammar: 0, science: 1 });
       }
