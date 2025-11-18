@@ -70,6 +70,22 @@ export const AuthProvider = ({ children }) => {
     [token, user, login, signup, logout]
   );
 
+  // On app mount once, attempt health check (non-blocking)
+  useEffect(() => {
+    (async () => {
+      try {
+        // lazy import to avoid circular deps
+        const { default: authSvc } = await import('../api/services/authService');
+        await authSvc.health();
+        // eslint-disable-next-line no-console
+        console.log('[API] Health check OK');
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[API] Health check failed', e);
+      }
+    })();
+  }, []);
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
