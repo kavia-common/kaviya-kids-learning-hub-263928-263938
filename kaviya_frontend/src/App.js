@@ -1,47 +1,87 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import KidAuthPage from './pages/KidAuthPage';
+import ParentDashboardLogin from './pages/ParentDashboardLogin';
 import './App.css';
 
 // PUBLIC_INTERFACE
+function LandingPage() {
+  /**
+   * Landing page with playful hero, cartoon-like gradient background, and
+   * two primary actions. Uses Corporate Navy palette with gold accents.
+   */
+  const navigate = useNavigate();
+
+  return (
+    <main className="landing">
+      <div className="bg-shapes" aria-hidden="true">
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+        <div className="stars" />
+      </div>
+
+      <section className="landing-content" role="region" aria-label="Intro">
+        <h1 className="landing-title" aria-label="Kaviya Kids Learn">
+          Kaviya Kids Learn
+          <span className="sparkle" aria-hidden="true">✨</span>
+        </h1>
+        <p className="landing-subtitle">
+          Adventure-packed lessons, quizzes, and badges—learning made fun!
+        </p>
+
+        <div className="cta-group" role="group" aria-label="Primary actions">
+          <button
+            className="btn-primary"
+            onClick={() => navigate('/kid-auth')}
+          >
+            Start Learning
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => navigate('/parent')}
+          >
+            Parent Login
+          </button>
+        </div>
+      </section>
+
+      <footer className="landing-footnote" aria-label="Theme notice">
+        Corporate Navy theme with golden accents
+      </footer>
+    </main>
+  );
+}
+
+// PUBLIC_INTERFACE
 function App() {
+  /**
+   * App root with routing for Landing, Kid Auth, and Parent areas.
+   * Also toggles a simple light/dark data-theme for future extensibility.
+   */
   const [theme, setTheme] = useState('light');
 
-  // Effect to apply theme to document element
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
+  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
 
   return (
     <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+      >
+        {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+      </button>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/kid-auth" element={<KidAuthPage />} />
+          <Route path="/parent" element={<ParentDashboardLogin />} />
+        </Routes>
+      </BrowserRouter>
     </div>
   );
 }
