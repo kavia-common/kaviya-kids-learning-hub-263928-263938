@@ -151,6 +151,22 @@ export default function WorldMapPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to="/journal"
+              aria-label="Open Learning Journal"
+              style={{
+                border: '2px solid #1E3A8A',
+                background: '#F59E0B',
+                color: '#111827',
+                borderRadius: 999,
+                padding: '8px 12px',
+                fontWeight: 800,
+                boxShadow: '0 10px 22px rgba(245,158,11,0.20)',
+                textDecoration: 'none'
+              }}
+            >
+              📓 Journal
+            </Link>
             <div style={styles.progressPill} title="XP unlocks more islands">
               <span style={styles.pillEmoji} aria-hidden="true">✨</span>
               <span style={styles.pillText}>Gain XP to unlock more adventures!</span>

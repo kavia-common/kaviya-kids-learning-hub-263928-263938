@@ -271,6 +271,17 @@ export default function NavBar() {
           </NavLink>
 
           <NavLink
+            to="/journal"
+            style={({ isActive }) => ({
+              ...linkBase,
+              ...(isActive ? activeStyle : { border: '2px solid rgba(255,255,255,0.15)' }),
+            })}
+            title="Learning Journal"
+          >
+            Journal
+          </NavLink>
+
+          <NavLink
             to="/story"
             style={({ isActive }) => ({
               ...linkBase,

@@ -16,6 +16,7 @@ import MiniGame_MathMaze from './pages/MiniGame_MathMaze';
 import MiniGame_WordBuilder from './pages/MiniGame_WordBuilder';
 import MiniGame_ScienceMatch from './pages/MiniGame_ScienceMatch';
 import './App.css';
+import JournalPage from './pages/JournalPage';
 
 // PUBLIC_INTERFACE
 function LandingPage() {
@@ -106,6 +107,7 @@ function App() {
           <Route path="/mini-games/math-maze" element={<AppLayout><MiniGame_MathMaze /></AppLayout>} />
           <Route path="/mini-games/word-builder" element={<AppLayout><MiniGame_WordBuilder /></AppLayout>} />
           <Route path="/mini-games/science-match" element={<AppLayout><MiniGame_ScienceMatch /></AppLayout>} />
+          <Route path="/journal" element={<AppLayout><JournalPage /></AppLayout>} />
         </Routes>
       </BrowserRouter>
     </div>
