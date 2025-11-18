@@ -1,0 +1,172 @@
+:root {
+  --cn-primary: #1E3A8A;
+  --cn-secondary: #F59E0B;
+  --cn-surface: #FFFFFF;
+  --cn-bg: #F3F4F6;
+  --cn-text: #111827;
+  --cn-success: #059669;
+  --cn-error: #DC2626;
+}
+
+.mg-container {
+  padding: 24px;
+  background: var(--cn-bg);
+  min-height: calc(100vh - 60px);
+  color: var(--cn-text);
+}
+
+.mg-header h1 {
+  color: var(--cn-primary);
+  margin: 0 0 8px;
+}
+
+.mg-subtitle {
+  margin: 0 0 24px;
+  color: #374151;
+}
+
+.mg-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.mg-card {
+  background: var(--cn-surface);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+}
+
+.mg-stat-title {
+  font-size: 14px;
+  color: #6B7280;
+}
+
+.mg-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--cn-primary);
+  margin-top: 6px;
+}
+
+.mg-cta {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--cn-secondary);
+  color: #111827;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.mg-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.mg-game-card {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 16px;
+  background: var(--cn-surface);
+  border-radius: 12px;
+  padding: 16px;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+}
+
+.mg-icon {
+  width: 64px;
+  height: 64px;
+  font-size: 36px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(30,58,138,0.08), rgba(245,158,11,0.12));
+  border-radius: 10px;
+}
+
+.mg-game-title {
+  margin: 0 0 4px;
+  color: var(--cn-primary);
+}
+
+.mg-game-desc {
+  margin: 0 0 6px;
+  color: #374151;
+}
+
+.mg-game-meta {
+  margin: 0;
+  color: #6B7280;
+}
+
+.mg-actions .mg-play-btn, .mg-actions .mg-secondary-btn {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.mg-actions .mg-play-btn {
+  background: var(--cn-primary);
+  color: white;
+}
+
+.mg-actions .mg-secondary-btn {
+  background: #E5E7EB;
+  color: #111827;
+  margin-left: 8px;
+}
+
+/* In-game shared bits */
+.mg-game-wrap {
+  background: var(--cn-surface);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+}
+
+.mg-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mg-chip {
+  background: #E5E7EB;
+  color: #111827;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.mg-btn {
+  background: var(--cn-primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.mg-btn:focus-visible {
+  outline: 3px solid var(--cn-secondary);
+  outline-offset: 2px;
+}
+
+.mg-success {
+  color: var(--cn-success);
+  font-weight: 700;
+}
+
+.mg-error {
+  color: var(--cn-error);
+  font-weight: 700;
+}

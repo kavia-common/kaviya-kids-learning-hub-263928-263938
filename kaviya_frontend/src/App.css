@@ -11,6 +11,15 @@
   --accent-gold: #F59E0B; /* Gold accent */
 }
 
+/* Accessibility helper for screen-reader only text */
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
+}
+
 [data-theme="dark"] {
   /* Dark theme colors */
   --bg-primary: #0f172a;

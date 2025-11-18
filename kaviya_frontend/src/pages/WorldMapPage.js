@@ -1,37 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 /**
  * PUBLIC_INTERFACE
- * WorldMapPage
- * Kid-friendly world map at /dashboard acting as the main home screen.
- *
- * - Shows three themed "islands" as large cards with playful motion and lock state:
- *   1) Math Mountain
- *   2) Grammar Galaxy
- *   3) Science Swamp
- *
- * - Lock/unlock logic: read mock XP from localStorage profile or internal state.
- *   Uses thresholds:
- *     Math Mountain: XP >= 0  (always unlocked)
- *     Grammar Galaxy: XP >= 100
- *     Science Swamp: XP >= 200
- *
- * - Clicking an unlocked island routes to content:
- *     Math -> /quiz/math (existing)
- *     Grammar -> /quiz/grammar (placeholder route - handled by /quiz/:subject page with fallback)
- *     Science -> /quiz/science (existing)
- *
- * - Accessibility:
- *   - Islands are buttons with aria-labels and disabled state
- *   - Visible lock badges for locked islands
- *   - Focus styles and keyboard navigation preserved
- *
- * - Branding:
- *   - Corporate Navy with gold accents
- *   - Rounded shapes, cheerful emoji "theming"
- *
- * - Mock progress box shows XP, completed quizzes (derived from localStorage or mock)
+ * WorldMapPage with entry to Mini-Games hub plus islands.
  */
 import SpinWheel from '../components/SpinWheel';
 
@@ -46,20 +18,8 @@ function canSpin() {
 }
 
 export default function WorldMapPage() {
-  /**
-   * Mock data/keys used:
-   * - localStorage "kaviya.kidProfile" { username, age, avatar, avatarColor }
-   * - localStorage "kaviya.kidXP": number (awarded from QuizPage)
-   * - localStorage "kaviya.completed": { math, grammar, science }
-   *
-   * Unlock thresholds:
-   *  - Math Mountain: 0 XP (always unlocked)
-   *  - Grammar Galaxy: 100 XP
-   *  - Science Swamp: 200 XP
-   */
   const navigate = useNavigate();
 
-  // Load kid profile (username, avatar, color) and XP from localStorage
   const [profile, setProfile] = useState(null);
   const [xp, setXp] = useState(0);
   const [completed, setCompleted] = useState({
@@ -69,28 +29,15 @@ export default function WorldMapPage() {
   });
 
   useEffect(() => {
-    // Read kid profile
     try {
       const stored = JSON.parse(localStorage.getItem('kaviya.kidProfile') || 'null');
       if (stored) setProfile(stored);
-    } catch {
-      // ignore parse error
-    }
-
-    // Read XP - if we later add XP saving from QuizPage, read it; else mock
+    } catch {}
     try {
       const storedXP = JSON.parse(localStorage.getItem('kaviya.kidXP') || 'null');
-      if (typeof storedXP === 'number') {
-        setXp(storedXP);
-      } else {
-        // fallback to a friendly default if not present
-        setXp(120);
-      }
-    } catch {
-      setXp(120);
-    }
-
-    // Read completed quizzes counts (mock or stored)
+      if (typeof storedXP === 'number') setXp(storedXP);
+      else setXp(120);
+    } catch { setXp(120); }
     try {
       const storedComp = JSON.parse(localStorage.getItem('kaviya.completed') || 'null');
       if (storedComp && typeof storedComp === 'object') {
@@ -107,7 +54,6 @@ export default function WorldMapPage() {
     }
   }, []);
 
-  // Simple thresholds for unlocks
   const thresholds = useMemo(
     () => ({
       math: 0,
@@ -117,7 +63,6 @@ export default function WorldMapPage() {
     []
   );
 
-  // Compute lock states based on XP
   const islands = useMemo(
     () => [
       {
@@ -154,11 +99,7 @@ export default function WorldMapPage() {
     [xp, thresholds]
   );
 
-  // PUBLIC_INTERFACE
   const goIsland = (island) => {
-    /**
-     * Navigate to the island's content if unlocked, else do nothing.
-     */
     if (!island.unlocked) return;
     navigate(island.to);
   };
@@ -185,51 +126,14 @@ export default function WorldMapPage() {
               className="avatar-hover"
             >
               <span style={styles.avatarEmoji}>{profile?.avatar || '🙂'}</span>
-              {showSpin && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Daily Spin Modal"
-            style={{
-              position: 'fixed', inset: 0,
-              background: 'rgba(17,24,39,0.55)',
-              display: 'grid', placeItems: 'center',
-              zIndex: 50
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setShowSpin(false);
-            }}
-          >
-            <div style={{ width: 'min(92vw, 900px)' }}>
-              <SpinWheel autoSpin={true} onAfterGrant={() => setEligible(false)} />
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowSpin(false)}
-                  style={{
-                    background: 'transparent', color: '#FFFFFF',
-                    border: '2px solid #FFFFFF',
-                    padding: '8px 14px',
-                    borderRadius: 999,
-                    fontWeight: 800,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Close
-                </button>
-              </div>
             </div>
-          </div>
-        )}
-      </div>
             <div>
               <h1 id="world-map-title" style={styles.title}>
                 {profile?.username ? `${profile.username}'s Learning World` : 'Your Learning World'}{' '}
                 <span aria-hidden="true">🗺️</span>
               </h1>
               <p style={styles.subtitle}>
-                XP: <b>{xp}</b> • Math: {completed.math} • Grammar: {completed.grammar} • Science:{' '}
-                {completed.science}
+                XP: <b>{xp}</b> • Math: {completed.math} • Grammar: {completed.grammar} • Science: {completed.science}
               </p>
             </div>
           </div>
@@ -284,9 +188,44 @@ export default function WorldMapPage() {
               {eligible ? 'Spin Now' : 'Not Ready'}
             </button>
           </div>
+          {showSpin && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Daily Spin Modal"
+              style={{
+                position: 'fixed', inset: 0,
+                background: 'rgba(17,24,39,0.55)',
+                display: 'grid', placeItems: 'center',
+                zIndex: 50
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setShowSpin(false);
+              }}
+            >
+              <div style={{ width: 'min(92vw, 900px)' }}>
+                <SpinWheel autoSpin={true} />
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowSpin(false)}
+                    style={{
+                      background: 'transparent', color: '#FFFFFF',
+                      border: '2px solid #FFFFFF',
+                      padding: '8px 14px',
+                      borderRadius: 999,
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
-        {/* Map area - responsive grid of island cards */}
         <section
           aria-label="Learning World Islands"
           style={styles.grid}
@@ -367,6 +306,33 @@ export default function WorldMapPage() {
           })}
         </section>
 
+        {/* Mini-Games Hub entry */}
+        <section
+          aria-label="Mini-Games entry"
+          style={{
+            marginTop: 16,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 12
+          }}
+        >
+          <article style={{ background: '#fff', borderRadius: 18, padding: 16, boxShadow: '0 10px 28px rgba(17,24,39,0.12)', border: '1px solid rgba(17,24,39,0.06)' }}>
+            <h3 style={{ marginTop: 0, color: '#1E3A8A' }}>Mini-Games</h3>
+            <p style={{ marginTop: 4, color: '#374151' }}>
+              Practice skills with quick games and earn XP, stickers, and spin tickets!
+            </p>
+            <Link to="/mini-games" style={{
+              display: 'inline-block',
+              padding: '10px 14px',
+              background: '#1E3A8A',
+              color: '#fff',
+              borderRadius: 10,
+              textDecoration: 'none',
+              fontWeight: 700
+            }}>Go to Mini-Games</Link>
+          </article>
+        </section>
+
         {/* Legend / Tips */}
         <section aria-label="Map legend and tips" style={styles.tipsCard}>
           <div style={styles.tipsHeader}>
@@ -375,8 +341,8 @@ export default function WorldMapPage() {
           </div>
           <ul style={styles.tipsList}>
             <li>Complete quizzes to earn XP and unlock new islands.</li>
-            <li>Check your badges for extra challenges and rewards.</li>
-            <li>Come back daily for new adventures.</li>
+            <li>Play Mini-Games for quick practice and rewards.</li>
+            <li>Come back daily for new adventures and a Daily Spin.</li>
           </ul>
         </section>
 
@@ -410,7 +376,6 @@ export default function WorldMapPage() {
       </div>
 
       <style>{`
-        /* Subtle float/hover animation for island icon bubble */
         .island-bubble {
           animation: floaty 3s ease-in-out infinite;
         }

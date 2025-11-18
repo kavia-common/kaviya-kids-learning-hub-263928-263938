@@ -11,13 +11,16 @@ import StickerBookPage from './pages/StickerBookPage';
 import StoryModePage from './pages/StoryModePage';
 import AppLayout from './components/AppLayout';
 import SpinPage from './pages/SpinPage';
+import MiniGamesHub from './pages/MiniGamesHub';
+import MiniGame_MathMaze from './pages/MiniGame_MathMaze';
+import MiniGame_WordBuilder from './pages/MiniGame_WordBuilder';
+import MiniGame_ScienceMatch from './pages/MiniGame_ScienceMatch';
 import './App.css';
 
 // PUBLIC_INTERFACE
 function LandingPage() {
   /**
-   * Landing page with playful hero, cartoon-like gradient background, and
-   * two primary actions. Uses Corporate Navy palette with gold accents.
+   * Landing page with playful hero and primary actions.
    */
   const navigate = useNavigate();
 
@@ -42,12 +45,14 @@ function LandingPage() {
           <button
             className="btn-primary"
             onClick={() => navigate('/kid-auth')}
+            aria-label="Start Learning"
           >
             Start Learning
           </button>
           <button
             className="btn-secondary"
             onClick={() => navigate('/parent')}
+            aria-label="Parent Login"
           >
             Parent Login
           </button>
@@ -64,8 +69,7 @@ function LandingPage() {
 // PUBLIC_INTERFACE
 function App() {
   /**
-   * App root with routing for Landing, Kid Auth, and Parent areas.
-   * Also toggles a simple light/dark data-theme for future extensibility.
+   * App root with routing and theme toggle.
    */
   const [theme, setTheme] = useState('light');
 
@@ -97,6 +101,11 @@ function App() {
           <Route path="/stickers" element={<AppLayout><StickerBookPage /></AppLayout>} />
           <Route path="/story" element={<AppLayout><StoryModePage /></AppLayout>} />
           <Route path="/spin" element={<AppLayout><SpinPage /></AppLayout>} />
+          {/* Mini-Games hub and games */}
+          <Route path="/mini-games" element={<AppLayout><MiniGamesHub /></AppLayout>} />
+          <Route path="/mini-games/math-maze" element={<AppLayout><MiniGame_MathMaze /></AppLayout>} />
+          <Route path="/mini-games/word-builder" element={<AppLayout><MiniGame_WordBuilder /></AppLayout>} />
+          <Route path="/mini-games/science-match" element={<AppLayout><MiniGame_ScienceMatch /></AppLayout>} />
         </Routes>
       </BrowserRouter>
     </div>

@@ -212,6 +212,14 @@ export default function KidDashboard() {
           >
             Back Home
           </button>
+          <button
+            style={{ ...styles.secondaryBtn, borderColor: '#1E3A8A', color: '#1E3A8A' }}
+            onClick={() => navigate('/mini-games')}
+            title="Play Mini-Games"
+            aria-label="Play Mini-Games"
+          >
+            Play Mini-Games
+          </button>
         </section>
       </div>
 
