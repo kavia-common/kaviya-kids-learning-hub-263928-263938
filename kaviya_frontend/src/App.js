@@ -53,6 +53,32 @@ function LandingPage() {
 }
 
 // PUBLIC_INTERFACE
+function DashboardPlaceholder() {
+  /**
+   * Temporary dashboard placeholder to enable navigation after kid auth.
+   * Reads kid profile from localStorage and greets the user.
+   */
+  const profile = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('kaviya.kidProfile') || 'null');
+    } catch {
+      return null;
+    }
+  })();
+
+  return (
+    <div className="page-shell">
+      <h2>Dashboard (Coming Next) 🎯</h2>
+      <p>
+        {profile
+          ? `Hi ${profile.avatar || '🙂'} ${profile.username}! Age ${profile.age}.`
+          : 'No profile found yet.'}
+      </p>
+    </div>
+  );
+}
+
+// PUBLIC_INTERFACE
 function App() {
   /**
    * App root with routing for Landing, Kid Auth, and Parent areas.
@@ -80,6 +106,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/kid-auth" element={<KidAuthPage />} />
           <Route path="/parent" element={<ParentDashboardLogin />} />
+          <Route path="/dashboard" element={<DashboardPlaceholder />} />
         </Routes>
       </BrowserRouter>
     </div>

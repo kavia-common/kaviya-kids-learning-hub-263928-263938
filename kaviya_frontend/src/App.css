@@ -54,6 +54,12 @@
   opacity: 0.95;
 }
 
+/* Global focus styles for accessibility */
+:focus-visible {
+  outline: 3px solid var(--accent-gold);
+  outline-offset: 3px;
+}
+
 .theme-toggle:active {
   transform: translateY(0);
 }

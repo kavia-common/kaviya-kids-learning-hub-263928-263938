@@ -50,3 +50,8 @@ code {
 .page-shell p {
   color: #374151;
 }
+
+/* Utility: avatar hover bounce for kid friendliness */
+.avatar-hover:hover {
+  transform: translateY(-2px) scale(1.03);
+}
