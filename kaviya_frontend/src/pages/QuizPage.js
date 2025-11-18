@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { usePet } from '../context/PetContext';
 
 /**
  * PUBLIC_INTERFACE
@@ -17,6 +18,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 export default function QuizPage() {
   const { subject } = useParams();
   const navigate = useNavigate();
+  const pet = usePet();
 
   // Mock data (can be replaced by API later)
   const QUESTIONS = useMemo(() => {
@@ -145,6 +147,13 @@ export default function QuizPage() {
     if (status === 'transition') return; // prevent double click during transition
     const isCorrect = choiceIndex === current.answerIndex;
 
+    // Trigger pet answer reaction
+    try {
+      pet?.reactToAnswer?.(isCorrect);
+    } catch {
+      // ignore
+    }
+
     if (isCorrect) {
       setStatus('correct');
       setScore((s) => s + 1);
@@ -172,6 +181,16 @@ export default function QuizPage() {
       setAriaMessage(`Quiz complete! You scored ${score} out of ${total}.`);
       // Award XP: 10 per correct
       awardXp(10 * (score + 0));
+      try {
+        pet?.addXp?.(10 * (score + 0));
+      } catch {}
+      // Pet reacts to result mood
+      const ratio = total > 0 ? (score / total) : 0;
+      const mood = ratio >= 0.8 ? 'excited' : ratio >= 0.5 ? 'happy' : 'confused';
+      try {
+        pet?.reactToResult?.(mood);
+      } catch {}
+
       // Record completion to reflect on World Map
       recordCompletion();
       // Move focus to results actions later
