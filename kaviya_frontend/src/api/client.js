@@ -3,13 +3,13 @@ import axios from 'axios';
 /**
  * Creates a preconfigured Axios client for the frontend.
  * - Base URL is read from REACT_APP_API_BASE_URL with a safe default.
+ * - Default base is same-origin '/api' so CRA proxy forwards to backend and avoids mixed content.
  * - Attaches Authorization header when a JWT token exists in localStorage.
  * - Provides simple error normalization.
  */
 const rawBase =
   (process.env.REACT_APP_API_BASE_URL && process.env.REACT_APP_API_BASE_URL.trim()) ||
-  // Default to backend dev port 3001; explicit scheme to avoid mixed-content issues
-  'http://localhost:3001';
+  '/api';
 
 // Normalize base so it never ends with a trailing slash to avoid double slashes in requests
 const baseURL = rawBase.replace(/\/+$/, '');
@@ -27,10 +27,14 @@ export const api = axios.create({
 // Request interceptor to include JWT token when available
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // Attach Bearer token if present
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        // Attach Bearer token if present
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {
+      // localStorage may be unavailable in some environments
     }
     return config;
   },

@@ -47,7 +47,20 @@ const authService = {
    * @returns {Promise<{message:string}>}
    */
   health: async () => {
-    const { data } = await api.get('/');
+    const { data } = await api.get('/health');
+    return data;
+  },
+
+  /** PUBLIC_INTERFACE
+   * Temporary debug login to test connectivity with sample credentials.
+   * @param {{username:string,password:string}} payload
+   * @returns {Promise<any>}
+   */
+  debugLogin: async (payload) => {
+    const { data } = await api.post('/login', {
+      username: payload.username,
+      password: payload.password,
+    });
     return data;
   },
 };

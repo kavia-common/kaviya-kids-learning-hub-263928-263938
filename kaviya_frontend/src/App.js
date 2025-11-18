@@ -13,6 +13,7 @@ import SpinPage from './pages/SpinPage';
 import WorldMapPage from './pages/WorldMapPage';
 import StoryModePage from './pages/StoryModePage';
 import JournalPage from './pages/JournalPage';
+import ApiHealthPage from './pages/ApiHealthPage';
 import { useAuth } from './context/AuthContext';
 
 // PUBLIC_INTERFACE
@@ -70,6 +71,7 @@ function App() {
         <Route path="/world" element={<ProtectedRoute><WorldMapPage /></ProtectedRoute>} />
         <Route path="/story" element={<ProtectedRoute><StoryModePage /></ProtectedRoute>} />
         <Route path="/journal" element={<ProtectedRoute><JournalPage /></ProtectedRoute>} />
+        <Route path="/_health" element={<ApiHealthPage />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
