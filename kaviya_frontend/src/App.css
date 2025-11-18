@@ -29,3 +29,14 @@ button:hover {
 button, [role="button"], input[type="radio"] {
   transition: all 180ms ease;
 }
+
+/* Basic navbar fallbacks (structure primarily handled inline styles) */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #FFFFFF;
+}
+.navbar .brand {
+  font-size: 1.05rem;
+}

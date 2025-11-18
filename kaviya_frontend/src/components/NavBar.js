@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import VoiceControl from './VoiceControl';
 
 /**
  * PUBLIC_INTERFACE
@@ -180,10 +181,16 @@ export default function NavBar() {
   return (
     <header style={styles.wrap} role="banner">
       <div style={styles.inner}>
-        <NavLink to="/" style={styles.brand} aria-label="Go to home">
-          <div style={styles.brandMark} aria-hidden="true">K</div>
-          <div style={styles.brandText}>Kaviya Kids Learn</div>
-        </NavLink>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <NavLink to="/" style={styles.brand} aria-label="Go to home">
+            <div style={styles.brandMark} aria-hidden="true">K</div>
+            <div style={styles.brandText}>Kaviya Kids Learn</div>
+          </NavLink>
+          {/* Voice toggle integrated globally */}
+          <div aria-label="Voice navigation" style={{ marginLeft: 8 }}>
+            <VoiceControl />
+          </div>
+        </div>
 
         <nav aria-label="Primary" style={styles.nav}>
           <NavLink
