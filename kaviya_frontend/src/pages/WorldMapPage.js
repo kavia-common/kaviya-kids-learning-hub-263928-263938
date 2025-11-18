@@ -234,18 +234,31 @@ export default function WorldMapPage() {
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => goIsland(island)}
-                    disabled={isLocked}
-                    aria-label={`${island.name} ${isLocked ? 'is locked' : 'enter island'}`}
-                    style={{
-                      ...styles.ctaBtn,
-                      ...(isLocked ? styles.ctaBtnDisabled : {}),
-                    }}
-                  >
-                    {isLocked ? 'Locked' : 'Enter ➜'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => goIsland(island)}
+                      disabled={isLocked}
+                      aria-label={`${island.name} ${isLocked ? 'is locked' : 'enter island'}`}
+                      style={{
+                        ...styles.ctaBtn,
+                        ...(isLocked ? styles.ctaBtnDisabled : {}),
+                      }}
+                    >
+                      {isLocked ? 'Locked' : 'Enter ➜'}
+                    </button>
+                    {!isLocked && island.id === 'math' && (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/story')}
+                        aria-label="Open Story Mode for Math Mountain"
+                        style={styles.secondaryStoryBtn}
+                        title="Story Mode"
+                      >
+                        📖 Story Mode
+                      </button>
+                    )}
+                  </div>
                 </div>
               </article>
             );
@@ -469,6 +482,17 @@ const styles = {
     background: 'linear-gradient(135deg, #6B7280, #9CA3AF)',
     cursor: 'not-allowed',
     boxShadow: '0 10px 20px rgba(107,114,128,0.25)',
+  },
+  secondaryStoryBtn: {
+    border: '2px solid #1E3A8A',
+    background: '#fff',
+    color: '#1E3A8A',
+    borderRadius: 999,
+    padding: '10px 14px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    boxShadow: '0 10px 22px rgba(30,58,138,0.20)',
+    fontSize: 14,
   },
   tipsCard: {
     background: '#fff',

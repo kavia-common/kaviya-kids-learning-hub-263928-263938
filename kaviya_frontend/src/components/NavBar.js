@@ -263,6 +263,17 @@ export default function NavBar() {
             Sticker Book
           </NavLink>
 
+          <NavLink
+            to="/story"
+            style={({ isActive }) => ({
+              ...linkBase,
+              ...(isActive ? activeStyle : { border: '2px solid rgba(255,255,255,0.15)' }),
+            })}
+            title="Story Mode"
+          >
+            Story Mode
+          </NavLink>
+
           <button type="button" onClick={onLogout} style={styles.logoutBtn} title="Log out kid session">
             Logout
           </button>

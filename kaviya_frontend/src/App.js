@@ -8,6 +8,7 @@ import QuizPage from './pages/QuizPage';
 import BadgesPage from './pages/BadgesPage';
 import WorldMapPage from './pages/WorldMapPage';
 import StickerBookPage from './pages/StickerBookPage';
+import StoryModePage from './pages/StoryModePage';
 import AppLayout from './components/AppLayout';
 import './App.css';
 
@@ -93,6 +94,7 @@ function App() {
           <Route path="/quiz/:subject" element={<AppLayout><QuizPage /></AppLayout>} />
           <Route path="/badges" element={<AppLayout><BadgesPage /></AppLayout>} />
           <Route path="/stickers" element={<AppLayout><StickerBookPage /></AppLayout>} />
+          <Route path="/story" element={<AppLayout><StoryModePage /></AppLayout>} />
         </Routes>
       </BrowserRouter>
     </div>
