@@ -33,6 +33,18 @@ import { useNavigate } from 'react-router-dom';
  *
  * - Mock progress box shows XP, completed quizzes (derived from localStorage or mock)
  */
+import SpinWheel from '../components/SpinWheel';
+
+const SPIN_LAST = 'lms.spin.lastSpinAt';
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function canSpin() {
+  const last = localStorage.getItem(SPIN_LAST);
+  if (!last) return true;
+  const lastDate = new Date(last);
+  return Date.now() - lastDate.getTime() >= ONE_DAY_MS;
+}
+
 export default function WorldMapPage() {
   /**
    * Mock data/keys used:
@@ -151,6 +163,14 @@ export default function WorldMapPage() {
     navigate(island.to);
   };
 
+  const [showSpin, setShowSpin] = useState(false);
+  const [eligible, setEligible] = useState(canSpin());
+
+  useEffect(() => {
+    const t = setInterval(() => setEligible(canSpin()), 30000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
     <main aria-labelledby="world-map-title" style={styles.wrap}>
       <div style={styles.container}>
@@ -165,7 +185,43 @@ export default function WorldMapPage() {
               className="avatar-hover"
             >
               <span style={styles.avatarEmoji}>{profile?.avatar || '🙂'}</span>
+              {showSpin && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Daily Spin Modal"
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(17,24,39,0.55)',
+              display: 'grid', placeItems: 'center',
+              zIndex: 50
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowSpin(false);
+            }}
+          >
+            <div style={{ width: 'min(92vw, 900px)' }}>
+              <SpinWheel autoSpin={true} onAfterGrant={() => setEligible(false)} />
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSpin(false)}
+                  style={{
+                    background: 'transparent', color: '#FFFFFF',
+                    border: '2px solid #FFFFFF',
+                    padding: '8px 14px',
+                    borderRadius: 999,
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
+          </div>
+        )}
+      </div>
             <div>
               <h1 id="world-map-title" style={styles.title}>
                 {profile?.username ? `${profile.username}'s Learning World` : 'Your Learning World'}{' '}
@@ -183,6 +239,52 @@ export default function WorldMapPage() {
             <span style={styles.pillText}>Gain XP to unlock more adventures!</span>
           </div>
         </header>
+
+        <section
+          role="region"
+          aria-label="Daily Spin Entry"
+          style={{
+            marginTop: 8,
+            background: '#FFFFFF',
+            borderRadius: 12,
+            padding: 12,
+            boxShadow: '0 8px 18px rgba(17,24,39,0.15)',
+            border: '2px solid #1E3A8A',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: '50%',
+              background: '#1E3A8A', color: '#F59E0B',
+              display: 'grid', placeItems: 'center', fontWeight: 900
+            }}>
+              ✨
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, color: '#1E3A8A' }}>Daily Spin</div>
+              <div style={{ color: '#374151', fontSize: 14 }}>
+                {eligible ? 'Daily Spin is ready!' : 'Daily Spin available after 24 hours.'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSpin(true)}
+              disabled={!eligible}
+              aria-disabled={!eligible}
+              style={{
+                background: eligible ? '#F59E0B' : '#9CA3AF',
+                color: '#111827',
+                border: 'none',
+                padding: '8px 14px',
+                borderRadius: 999,
+                fontWeight: 800,
+                cursor: eligible ? 'pointer' : 'not-allowed'
+              }}
+            >
+              {eligible ? 'Spin Now' : 'Not Ready'}
+            </button>
+          </div>
+        </section>
 
         {/* Map area - responsive grid of island cards */}
         <section

@@ -10,6 +10,7 @@ import WorldMapPage from './pages/WorldMapPage';
 import StickerBookPage from './pages/StickerBookPage';
 import StoryModePage from './pages/StoryModePage';
 import AppLayout from './components/AppLayout';
+import SpinPage from './pages/SpinPage';
 import './App.css';
 
 // PUBLIC_INTERFACE
@@ -95,6 +96,7 @@ function App() {
           <Route path="/badges" element={<AppLayout><BadgesPage /></AppLayout>} />
           <Route path="/stickers" element={<AppLayout><StickerBookPage /></AppLayout>} />
           <Route path="/story" element={<AppLayout><StoryModePage /></AppLayout>} />
+          <Route path="/spin" element={<AppLayout><SpinPage /></AppLayout>} />
         </Routes>
       </BrowserRouter>
     </div>

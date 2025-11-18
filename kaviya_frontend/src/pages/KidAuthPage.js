@@ -207,6 +207,26 @@ export default function KidAuthPage() {
               </button>
             </div>
           </form>
+
+          <div style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={() => navigate('/spin')}
+              style={{
+                border: '2px solid #1E3A8A',
+                background: '#FFFBEB',
+                color: '#92400E',
+                borderRadius: 999,
+                padding: '8px 12px',
+                fontWeight: 800,
+                boxShadow: '0 8px 18px rgba(245,158,11,0.20)',
+                cursor: 'pointer'
+              }}
+              aria-label="Go to Daily Spin"
+            >
+              ✨ Daily Spin
+            </button>
+          </div>
         </section>
       </div>
     </main>
