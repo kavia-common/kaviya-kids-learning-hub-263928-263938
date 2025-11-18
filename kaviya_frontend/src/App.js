@@ -7,6 +7,7 @@ import KidDashboard from './pages/KidDashboard';
 import QuizPage from './pages/QuizPage';
 import BadgesPage from './pages/BadgesPage';
 import WorldMapPage from './pages/WorldMapPage';
+import StickerBookPage from './pages/StickerBookPage';
 import AppLayout from './components/AppLayout';
 import './App.css';
 
@@ -91,6 +92,7 @@ function App() {
           <Route path="/kid-dashboard" element={<AppLayout><KidDashboard /></AppLayout>} />
           <Route path="/quiz/:subject" element={<AppLayout><QuizPage /></AppLayout>} />
           <Route path="/badges" element={<AppLayout><BadgesPage /></AppLayout>} />
+          <Route path="/stickers" element={<AppLayout><StickerBookPage /></AppLayout>} />
         </Routes>
       </BrowserRouter>
     </div>

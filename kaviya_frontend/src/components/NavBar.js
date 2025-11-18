@@ -253,6 +253,16 @@ export default function NavBar() {
             Badges
           </NavLink>
 
+          <NavLink
+            to="/stickers"
+            style={({ isActive }) => ({
+              ...linkBase,
+              ...(isActive ? activeStyle : { border: '2px solid rgba(255,255,255,0.15)' }),
+            })}
+          >
+            Sticker Book
+          </NavLink>
+
           <button type="button" onClick={onLogout} style={styles.logoutBtn} title="Log out kid session">
             Logout
           </button>

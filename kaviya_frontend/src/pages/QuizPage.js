@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePet } from '../context/PetContext';
+import { awardForQuiz, getStreak } from '../utils/stickers';
 
 /**
  * PUBLIC_INTERFACE
@@ -111,6 +112,7 @@ export default function QuizPage() {
   const [status, setStatus] = useState('idle'); // 'idle' | 'correct' | 'incorrect' | 'transition' | 'done'
   const [ariaMessage, setAriaMessage] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
+  const [awardedStickers, setAwardedStickers] = useState([]); // ids
 
   const buttonsRef = useRef([]);
   const cardRef = useRef(null);
@@ -181,19 +183,22 @@ export default function QuizPage() {
       setAriaMessage(`Quiz complete! You scored ${score} out of ${total}.`);
       // Award XP: 10 per correct
       awardXp(10 * (score + 0));
-      try {
-        pet?.addXp?.(10 * (score + 0));
-      } catch {}
+      try { pet?.addXp?.(10 * (score + 0)); } catch {}
+
+      // Sticker awards
+      const perfect = total > 0 && score === total;
+      const currentStreak = getStreak(); // previous streak before this award
+      const streakBonus = perfect && currentStreak + 1 >= 3;
+      const stickers = awardForQuiz({ score, total, perfect, streakBonus });
+      setAwardedStickers(stickers);
+
       // Pet reacts to result mood
       const ratio = total > 0 ? (score / total) : 0;
       const mood = ratio >= 0.8 ? 'excited' : ratio >= 0.5 ? 'happy' : 'confused';
-      try {
-        pet?.reactToResult?.(mood);
-      } catch {}
+      try { pet?.reactToResult?.(mood); } catch {}
 
       // Record completion to reflect on World Map
       recordCompletion();
-      // Move focus to results actions later
       return;
     }
     setStatus('transition');
@@ -387,6 +392,26 @@ export default function QuizPage() {
               </div>
             </div>
 
+            {/* Sticker awards summary */}
+            {awardedStickers?.length ? (
+              <div style={{ ...styles.card, marginTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ fontWeight: 800, color: '#1E3A8A' }}>Stickers Awarded</div>
+                  <span aria-hidden="true">🎁</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {awardedStickers.map((id, i) => (
+                    <AwardChip key={i} id={id} />
+                  ))}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <button style={styles.secondaryBtn} onClick={() => navigate('/stickers')}>
+                    Open Sticker Book
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             <div style={styles.resultsActions}>
               <button style={styles.primaryBtn} onClick={handleRestart} autoFocus>
                 Try Again 🔁
@@ -472,6 +497,47 @@ function ConfettiOverlay() {
         }
       `}</style>
     </div>
+  );
+}
+
+function AwardChip({ id }) {
+  const defs = useMemo(() => {
+    // local small cache of definitions
+    try {
+      const all = require('../utils/stickers'); // dynamic not ideal; safe within bundler
+      if (all && all.getAllStickersFlat) {
+        return all.getAllStickersFlat();
+      }
+    } catch {}
+    return [];
+  }, []);
+  const def = defs.find((d) => d.id === id);
+  const chipStyle = {
+    border: '1px solid rgba(17,24,39,0.08)',
+    background: '#fff',
+    borderRadius: 999,
+    padding: '6px 10px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    boxShadow: '0 8px 16px rgba(0,0,0,0.08)',
+    fontSize: 14,
+    color: '#111827',
+  };
+  const emojiStyle = {
+    height: 28,
+    width: 28,
+    borderRadius: 999,
+    display: 'grid',
+    placeItems: 'center',
+    background: 'linear-gradient(135deg, #1E3A8A22, #F59E0B22)',
+    fontSize: 16,
+  };
+  return (
+    <span style={chipStyle} title={def?.name || id}>
+      <span style={emojiStyle} aria-hidden="true">{def?.emoji || '✨'}</span>
+      <span>{def?.name || id}</span>
+    </span>
   );
 }
 

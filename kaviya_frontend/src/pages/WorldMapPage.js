@@ -264,6 +264,34 @@ export default function WorldMapPage() {
             <li>Come back daily for new adventures.</li>
           </ul>
         </section>
+
+        <section aria-label="Collections" style={styles.tipsCard}>
+          <div style={styles.tipsHeader}>
+            <h3 style={styles.tipsTitle}>Collections</h3>
+            <span style={styles.tipsEmoji} aria-hidden="true">🎨</span>
+          </div>
+          <p style={{ margin: 0, color: '#374151', fontSize: 14 }}>
+            Visit your Sticker Book to arrange your rewards!
+          </p>
+          <div style={{ marginTop: 8 }}>
+            <button
+              onClick={() => navigate('/stickers')}
+              style={{
+                border: '2px solid #F59E0B',
+                background: '#fff',
+                color: '#1E3A8A',
+                borderRadius: 999,
+                padding: '8px 12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 10px 22px rgba(245,158,11,0.25)',
+                fontSize: 14,
+              }}
+            >
+              Open Sticker Book
+            </button>
+          </div>
+        </section>
       </div>
 
       <style>{`
