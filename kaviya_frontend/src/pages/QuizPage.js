@@ -2,6 +2,10 @@ import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
 import '../App.css';
 import '../index.css';
 import { PetContext } from '../context/PetContext';
+import { useParams } from 'react-router-dom';
+import { findMatchingAcceptedChallenges, completeChallenge } from '../utils/challenges';
+import { addXP as addMiniXP } from '../utils/miniGamesStorage';
+import { addSticker } from '../utils/stickers';
 
 // Corporate Navy theme tokens
 const COLORS = {
@@ -247,6 +251,18 @@ export default function QuizPage() {
     border: `1px solid ${COLORS.primary}40`,
   };
 
+  // subject from URL
+  const { subject: routeSubject } = useParams();
+  const subjectNormalized = (routeSubject || '').toLowerCase();
+
+  // toast for celebrations
+  const [toast, setToast] = useState('');
+  const toastRef = useRef(null);
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2000);
+  };
+
   return (
     <div style={containerStyle}>
       <div style={{ ...cardStyle }}>
@@ -341,6 +357,38 @@ export default function QuizPage() {
           <div>
             <h3 style={{ color: COLORS.primary, marginBottom: 4 }}>All done!</h3>
             <p>Your score: {score} / {questionSet.length}</p>
+
+            {/* Challenge completion hook */}
+            {(() => {
+              try {
+                const kid = JSON.parse(localStorage.getItem('kaviya.kidProfile') || 'null');
+                const username = kid?.username;
+                const pct = questionSet.length > 0 ? Math.round((score / questionSet.length) * 100) : 0;
+
+                if (username && subjectNormalized) {
+                  const accepted = findMatchingAcceptedChallenges(username, subjectNormalized);
+                  accepted.forEach((ch) => {
+                    // challenge subjects are title case; normalize compare
+                    const sNorm = (ch.subject || '').toLowerCase();
+                    if (sNorm === subjectNormalized && pct >= Number(ch.target || 0)) {
+                      completeChallenge(username, ch.id);
+                      // award bonus XP and special sticker
+                      addMiniXP(25);
+                      addSticker('nature_star', 1); // if exists; fallback sticker
+                      // also persist kid-level XP mock if used elsewhere
+                      try {
+                        const prevXP = Number(JSON.parse(localStorage.getItem('kaviya.kidXP') || '0')) || 0;
+                        localStorage.setItem('kaviya.kidXP', JSON.stringify(prevXP + 25));
+                      } catch {}
+                      showToast('Challenge completed! +25 XP and a shiny star sticker! ⭐');
+                    }
+                  });
+                }
+              } catch {
+                // ignore errors
+              }
+              return null;
+            })()}
 
             {/* Simple confetti simulation with emojis for accessibility-friendly celebration */}
             <div aria-hidden="true" style={{ margin: '10px 0', fontSize: 18 }}>
@@ -473,6 +521,28 @@ export default function QuizPage() {
           🎊
         </div>
       )}
+
+      {/* Toast / live announcements */}
+      <div
+        ref={toastRef}
+        role="status"
+        aria-live="polite"
+        style={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+          background: toast ? '#ECFDF5' : 'transparent',
+          color: '#065F46',
+          border: toast ? '2px solid #059669' : 'none',
+          borderRadius: 12,
+          padding: toast ? '10px 12px' : 0,
+          boxShadow: toast ? '0 10px 22px rgba(5,150,105,0.25)' : 'none',
+          transition: 'all 150ms ease',
+          fontWeight: 800,
+        }}
+      >
+        {toast}
+      </div>
     </div>
   );
 }

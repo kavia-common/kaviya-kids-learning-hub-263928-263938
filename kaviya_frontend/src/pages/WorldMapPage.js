@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 /**
@@ -6,6 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
  * WorldMapPage with entry to Mini-Games hub plus islands.
  */
 import SpinWheel from '../components/SpinWheel';
+import { countOpenChallenges, getChallengesForKid, acceptChallenge, updateChallenge } from '../utils/challenges';
 
 const SPIN_LAST = 'lms.spin.lastSpinAt';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -27,6 +28,11 @@ export default function WorldMapPage() {
     grammar: 0,
     science: 0,
   });
+
+  // Challenges
+  const [openCount, setOpenCount] = useState(0);
+  const [showChallenges, setShowChallenges] = useState(false);
+  const modalCloseBtnRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -53,6 +59,12 @@ export default function WorldMapPage() {
       setCompleted({ math: 3, grammar: 0, science: 1 });
     }
   }, []);
+
+  useEffect(() => {
+    if (profile?.username) {
+      setOpenCount(countOpenChallenges(profile.username));
+    }
+  }, [profile, showChallenges]);
 
   const thresholds = useMemo(
     () => ({
@@ -138,9 +150,30 @@ export default function WorldMapPage() {
             </div>
           </div>
 
-          <div style={styles.progressPill} title="XP unlocks more islands">
-            <span style={styles.pillEmoji} aria-hidden="true">✨</span>
-            <span style={styles.pillText}>Gain XP to unlock more adventures!</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={styles.progressPill} title="XP unlocks more islands">
+              <span style={styles.pillEmoji} aria-hidden="true">✨</span>
+              <span style={styles.pillText}>Gain XP to unlock more adventures!</span>
+            </div>
+
+            {profile?.username && openCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowChallenges(true)}
+                aria-label={`You have ${openCount} open challenge${openCount>1?'s':''}`}
+                style={{
+                  border: '2px solid #F59E0B',
+                  background: '#FFFBEB',
+                  color: '#92400E',
+                  borderRadius: 999,
+                  padding: '8px 12px',
+                  fontWeight: 800,
+                  boxShadow: '0 10px 22px rgba(245,158,11,0.20)',
+                }}
+              >
+                🎯 Challenges ({openCount})
+              </button>
+            )}
           </div>
         </header>
 
@@ -225,6 +258,105 @@ export default function WorldMapPage() {
             </div>
           )}
         </section>
+
+        {/* Challenges modal */}
+        {showChallenges && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Challenges"
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'grid', placeItems: 'center', zIndex: 60
+            }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowChallenges(false); }}
+          >
+            <div style={{ background: '#fff', width: 'min(92vw, 680px)', borderRadius: 16, boxShadow: '0 16px 40px rgba(0,0,0,0.3)', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderBottom: '1px solid #E5E7EB' }}>
+                <h2 style={{ margin: 0, color: '#1E3A8A' }}>Challenges</h2>
+                <button
+                  ref={modalCloseBtnRef}
+                  onClick={() => setShowChallenges(false)}
+                  style={{ border: '2px solid #1E3A8A', background: '#fff', color: '#1E3A8A', borderRadius: 999, padding: '6px 10px', fontWeight: 800, cursor: 'pointer' }}
+                  aria-label="Close challenges"
+                >
+                  Close
+                </button>
+              </div>
+              <div style={{ padding: 14 }}>
+                {(() => {
+                  const list = getChallengesForKid(profile?.username || '');
+                  const openList = list.filter((c) => c.status === 'Open');
+                  const acceptedList = list.filter((c) => c.status === 'Accepted');
+                  if (openList.length === 0 && acceptedList.length === 0) {
+                    return <p style={{ color: '#6B7280' }}>No current challenges. Check back later!</p>;
+                  }
+                  return (
+                    <>
+                      {openList.length > 0 && (
+                        <>
+                          <h3 style={{ margin: '4px 0', color: '#111827' }}>Open</h3>
+                          <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 8 }}>
+                            {openList.map((c) => (
+                              <li key={c.id} style={{ border: '1px solid #E5E7EB', borderRadius: 12, padding: 10, background: '#FFFBEB' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                                  <div style={{ fontWeight: 800, color: '#92400E' }}>
+                                    {c.subject} • Target {c.target}
+                                  </div>
+                                  <span style={{ fontSize: 12, color: '#6B7280' }}>{new Date(c.createdAt).toLocaleString()}</span>
+                                </div>
+                                {c.message && <div style={{ color: '#6B7280', marginTop: 4, fontSize: 14 }}>“{c.message}”</div>}
+                                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      acceptChallenge(profile?.username || '', c.id);
+                                      setShowChallenges(false); // close and refresh pill
+                                    }}
+                                    style={{ border: 'none', background: 'linear-gradient(135deg, #1E3A8A, #1E40AF)', color: '#fff', borderRadius: 999, padding: '8px 12px', fontWeight: 800, cursor: 'pointer' }}
+                                  >
+                                    Accept
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateChallenge(profile?.username || '', c.id, { status: 'Canceled' });
+                                      setShowChallenges(false);
+                                    }}
+                                    style={{ border: '2px solid #DC2626', background: '#fff', color: '#DC2626', borderRadius: 999, padding: '8px 12px', fontWeight: 800, cursor: 'pointer' }}
+                                  >
+                                    Dismiss
+                                  </button>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                      {acceptedList.length > 0 && (
+                        <>
+                          <h3 style={{ margin: '12px 0 4px', color: '#111827' }}>Accepted</h3>
+                          <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 8 }}>
+                            {acceptedList.map((c) => (
+                              <li key={c.id} style={{ border: '1px solid #E5E7EB', borderRadius: 12, padding: 10, background: '#EFF6FF' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                                  <div style={{ fontWeight: 800, color: '#1D4ED8' }}>
+                                    {c.subject} • Target {c.target}
+                                  </div>
+                                  {c.dueBy && <span style={{ fontSize: 12, color: '#1D4ED8' }}>Due by {new Date(c.dueBy).toLocaleDateString()}</span>}
+                                </div>
+                                {c.message && <div style={{ color: '#374151', marginTop: 4, fontSize: 14 }}>“{c.message}”</div>}
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
 
         <section
           aria-label="Learning World Islands"

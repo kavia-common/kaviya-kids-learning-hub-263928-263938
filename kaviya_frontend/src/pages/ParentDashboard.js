@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getChallengesForKid, saveChallenge, cancelChallenge } from '../utils/challenges';
 
 /**
  * PUBLIC_INTERFACE
@@ -7,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
  * Protected parent area displaying:
  * - Mock child progress chart (inline SVG bars)
  * - Screen time tracker UI with daily/weekly views and adjustable limits (non-persistent)
+ * - NEW: Parent-Kid Challenges (mock) — create, list, cancel
  * Route protection: if no session, redirects to /parent
  * Styling: Corporate Navy with gold accents, rounded cards, accessible and keyboard-friendly
  */
@@ -81,6 +83,45 @@ export default function ParentDashboard() {
       // ignore
     }
     navigate('/parent', { replace: true });
+  };
+
+  // Challenges state
+  const [challenges, setChallenges] = useState([]);
+  const [subject, setSubject] = useState('Math');
+  const [target, setTarget] = useState(80);
+  const [message, setMessage] = useState('');
+  const statusLiveRef = useRef(null);
+
+  const kidName = childProfile?.username || 'SkyKid';
+
+  const reloadChallenges = () => {
+    const list = getChallengesForKid(kidName);
+    setChallenges(list);
+  };
+
+  useEffect(() => {
+    reloadChallenges();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kidName]);
+
+  const onCreate = (e) => {
+    e.preventDefault();
+    const t = Math.max(0, Math.min(100, Number(target || 0)));
+    saveChallenge(kidName, { subject, target: t, message });
+    setMessage('');
+    // status update
+    if (statusLiveRef.current) {
+      statusLiveRef.current.textContent = `Challenge created for ${kidName} in ${subject} with target ${t}.`;
+    }
+    reloadChallenges();
+  };
+
+  const onCancel = (id) => {
+    cancelChallenge(kidName, id);
+    if (statusLiveRef.current) {
+      statusLiveRef.current.textContent = `Challenge canceled.`;
+    }
+    reloadChallenges();
   };
 
   if (!session) return null;
@@ -272,6 +313,138 @@ export default function ParentDashboard() {
             Note: These controls are a mock preview and not yet connected to backend.
           </div>
         </section>
+
+        {/* Parent-Kid Challenges */}
+        <section aria-labelledby="challenge-title" style={styles.card}>
+          <div style={styles.cardHeader}>
+            <h2 id="challenge-title" style={styles.cardTitle}>Create Challenge</h2>
+            <span style={styles.cardHint}>Set a subject goal for {kidName}</span>
+          </div>
+
+          <form onSubmit={onCreate} aria-describedby="challenge-help">
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <label htmlFor="challenge-subject" style={{ fontWeight: 700, color: '#1E3A8A' }}>Subject</label>
+                <select
+                  id="challenge-subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  style={styles.input}
+                >
+                  <option>Math</option>
+                  <option>English</option>
+                  <option>Science</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gap: 6 }}>
+                <label htmlFor="challenge-target" style={{ fontWeight: 700, color: '#1E3A8A' }}>
+                  Target Score (0–100)
+                </label>
+                <input
+                  id="challenge-target"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gap: 6 }}>
+                <label htmlFor="challenge-message" style={{ fontWeight: 700, color: '#1E3A8A' }}>
+                  Optional Message
+                </label>
+                <textarea
+                  id="challenge-message"
+                  rows={3}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  style={{ ...styles.input, resize: 'vertical' }}
+                  placeholder="Cheer your kid on with a short note!"
+                />
+              </div>
+
+              <div>
+                <button type="submit" style={styles.primaryBtn}>
+                  Create Challenge
+                </button>
+                <span id="challenge-help" style={{ marginLeft: 10, color: '#6B7280', fontSize: 12 }}>
+                  Challenges are stored safely on this device only.
+                </span>
+              </div>
+            </div>
+          </form>
+
+          <div
+            aria-live="polite"
+            role="status"
+            ref={statusLiveRef}
+            style={{ marginTop: 10, color: '#065F46' }}
+          />
+
+          <div style={{ marginTop: 12, borderTop: '1px solid #E5E7EB', paddingTop: 12 }}>
+            <h3 style={{ margin: 0, color: '#111827', fontSize: 16 }}>Existing Challenges</h3>
+            {challenges.length === 0 ? (
+              <p style={{ color: '#6B7280', marginTop: 8 }}>No challenges yet.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'grid', gap: 8 }}>
+                {challenges.map((c) => (
+                  <li
+                    key={c.id}
+                    style={{
+                      border: '1px solid rgba(17, 24, 39, 0.06)',
+                      borderRadius: 12,
+                      padding: 10,
+                      background: '#FFFFFF',
+                      display: 'grid',
+                      gap: 6,
+                    }}
+                    aria-label={`Challenge ${c.subject} target ${c.target}, status ${c.status}`}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                      <div style={{ fontWeight: 800, color: '#1E3A8A' }}>
+                        {c.subject} • Target {c.target}
+                      </div>
+                      <div>
+                        <span
+                          style={{
+                            border: '2px solid ' + (c.status === 'Completed' ? '#059669' : c.status === 'Accepted' ? '#2563EB' : c.status === 'Canceled' ? '#DC2626' : '#F59E0B'),
+                            borderRadius: 999,
+                            padding: '2px 8px',
+                            background: c.status === 'Completed' ? '#ECFDF5' : c.status === 'Accepted' ? '#EFF6FF' : c.status === 'Canceled' ? '#FEF2F2' : '#FFFBEB',
+                            color: c.status === 'Completed' ? '#065F46' : c.status === 'Accepted' ? '#1D4ED8' : c.status === 'Canceled' ? '#991B1B' : '#92400E',
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
+                          role="status"
+                          aria-live="polite"
+                        >
+                          {c.status}
+                        </span>
+                      </div>
+                    </div>
+                    {c.message && <div style={{ color: '#374151', fontSize: 14 }}>“{c.message}”</div>}
+                    {c.dueBy && <div style={{ color: '#6B7280', fontSize: 12 }}>Due by: {new Date(c.dueBy).toLocaleDateString()}</div>}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {c.status === 'Open' && (
+                        <button
+                          type="button"
+                          onClick={() => onCancel(c.id)}
+                          style={{ ...styles.smallBtn, borderColor: '#DC2626', color: '#DC2626' }}
+                          aria-label="Cancel challenge"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );
@@ -416,5 +589,24 @@ const styles = {
     padding: '6px 10px',
     fontWeight: 800,
     fontSize: 12,
+  },
+  input: {
+    border: '2px solid #e5e7eb',
+    borderRadius: 12,
+    padding: '10px 12px',
+    fontSize: 14,
+    outline: 'none',
+    background: '#fff',
+  },
+  primaryBtn: {
+    border: 'none',
+    background: 'linear-gradient(135deg, #1E3A8A, #1E40AF)',
+    color: '#fff',
+    borderRadius: 999,
+    padding: '10px 14px',
+    fontWeight: 800,
+    cursor: 'pointer',
+    boxShadow: '0 12px 24px rgba(30, 58, 138, 0.35)',
+    fontSize: 14,
   },
 };
