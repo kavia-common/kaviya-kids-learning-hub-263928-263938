@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import SpinWheel from '../components/SpinWheel';
 import { countOpenChallenges, getChallengesForKid, acceptChallenge, updateChallenge } from '../utils/challenges';
-import { getDashboard } from '../api/client';
+import dashboardService from '../api/services/dashboardService';
 
 const SPIN_LAST = 'lms.spin.lastSpinAt';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -77,7 +77,7 @@ export default function WorldMapPage() {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
     setLoading(true);
-    getDashboard(userId)
+    dashboardService.getDashboard(userId)
       .then((data) => {
         const u = data?.username;
         const x = Number(data?.xp ?? xp);

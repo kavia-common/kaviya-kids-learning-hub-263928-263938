@@ -1,139 +1,48 @@
-import axios from "axios";
+import axios from 'axios';
 
 /**
- * PUBLIC_INTERFACE
- * getApiBaseUrl
- * Returns the configured backend base URL from environment variable.
- * Falls back to REACT_APP_API_BASE for compatibility, otherwise '' (relative).
+ * Creates a preconfigured Axios client for the frontend.
+ * - Base URL is read from REACT_APP_API_BASE_URL with a safe default.
+ * - Attaches Authorization header when a JWT token exists in localStorage.
+ * - Provides simple error normalization.
  */
-export function getApiBaseUrl() {
-  const envBase =
-    process.env.REACT_APP_BACKEND_URL ||
-    process.env.REACT_APP_API_BASE ||
-    "";
-  if (!envBase) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      "[API] Missing REACT_APP_BACKEND_URL (or REACT_APP_API_BASE). Using relative URLs. Set this in .env to avoid CORS/404 issues."
-    );
-  }
-  return envBase.replace(/\/+$/, "");
-}
+const baseURL =
+  process.env.REACT_APP_API_BASE_URL?.trim() || 'http://localhost:3001';
 
-// Create axios instance
-const api = axios.create({
-  baseURL: getApiBaseUrl(),
+export const api = axios.create({
+  baseURL,
   timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Request interceptor (attach token if present)
+// Request interceptor to include JWT token when available
 api.interceptors.request.use(
   (config) => {
-    try {
-      const token = localStorage.getItem("authToken");
-      if (token) {
-        // Safe header set
-        config.headers = {
-          ...(config.headers || {}),
-          Authorization: `Bearer ${token}`,
-        };
-      }
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("[API] Unable to access localStorage for token", e);
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      // Attach Bearer token if present
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for centralized error handling
+// Response interceptor to normalize errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const friendly =
-      (error?.response?.data?.message ||
-        error?.message ||
-        "Something went wrong, please try again.") + "";
-    // eslint-disable-next-line no-console
-    console.error("[API] Request failed:", {
-      url: error?.config?.url,
-      status: error?.response?.status,
-      message: friendly,
-    });
-    // Ensure a consistent error shape
-    return Promise.reject({
-      message: friendly,
-      status: error?.response?.status,
-      data: error?.response?.data,
-    });
+    // Attempt to extract a useful message
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      'Request failed';
+    const status = error?.response?.status || 0;
+    return Promise.reject({ message, status, raw: error });
   }
 );
-
-/**
- * PUBLIC_INTERFACE
- * signup
- * Calls POST /signup with { username, role, avatar, age }.
- * On success, stores userId and token (if provided) in localStorage.
- */
-export async function signup(payload) {
-  const res = await api.post("/signup", payload);
-  const data = res?.data || {};
-  // Store identifiers safely
-  if (data.userId) localStorage.setItem("userId", data.userId);
-  if (data.token) localStorage.setItem("authToken", data.token);
-  return data;
-}
-
-/**
- * PUBLIC_INTERFACE
- * getDashboard
- * Fetches dashboard data for a kid by id: GET /dashboard/:id
- */
-export async function getDashboard(userId) {
-  const res = await api.get(`/dashboard/${encodeURIComponent(userId)}`);
-  return res?.data || {};
-}
-
-/**
- * PUBLIC_INTERFACE
- * getQuiz
- * Loads quiz questions by subject: GET /quiz/:subject
- */
-export async function getQuiz(subject) {
-  const res = await api.get(`/quiz/${encodeURIComponent(subject)}`);
-  return res?.data || {};
-}
-
-/**
- * PUBLIC_INTERFACE
- * submitQuiz
- * Submits quiz answers: POST /submit-quiz with { userId, answers }
- * Returns updated XP/level/badges etc.
- */
-export async function submitQuiz(submission) {
-  const res = await api.post("/submit-quiz", submission);
-  return res?.data || {};
-}
-
-/**
- * PUBLIC_INTERFACE
- * getParentData
- * Fetch parent dashboard info: GET /parent/:id
- */
-export async function getParentData(parentId) {
-  const res = await api.get(`/parent/${encodeURIComponent(parentId)}`);
-  return res?.data || {};
-}
-
-/**
- * PUBLIC_INTERFACE
- * getRewards
- * Fetch rewards and pet state: GET /rewards/:id
- */
-export async function getRewards(userId) {
-  const res = await api.get(`/rewards/${encodeURIComponent(userId)}`);
-  return res?.data || {};
-}
 
 export default api;
